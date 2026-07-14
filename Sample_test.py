@@ -159,6 +159,7 @@ def run_live_api_demo():
     # Feature Engineering:
     # 1. TyreLife: Calculate cumulative laps run by counting consecutive driver laps.
     # 2. LapTime_Delta: Calculate performance dropoff by finding the time difference from the previous lap.
+    #TODO: reset every time the car pits
     df['TyreLife'] = df.groupby(['year', 'raceId', 'driverId']).cumcount() + 1
     df['LapTime_Delta'] = df.groupby(['year', 'raceId', 'driverId'])['LapTime_Seconds'].diff().fillna(0)
     df['Stint'] = 1 # Placeholder structural column to match classification formats
