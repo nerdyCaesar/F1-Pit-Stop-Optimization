@@ -7,13 +7,13 @@ import json
 
 def run_live_api_demo():
     """
-    Main function that manages the entire F1 data pipeline:
+    Main orchestrator function that manages the entire F1 data pipeline:
     1. Fetches historical race schedules and lap timing data from the public Jolpica API.
     2. Implements a local file caching system to prevent redundant API calls (deduplication).
     3. Handles API rate limits with automatic wait-and-retry logic (exponential backoff / 1-hour sleep).
     4. Re-assembles downloaded race JSON files into a single unified Pandas DataFrame.
     5. Performs feature engineering (time conversion, tyre life calculation, and delta timing)
-        to produce structured feature matrices (X) and target arrays (y) for a custom decision tree model.
+       to produce structured feature matrices (X) and target arrays (y) for a custom decision tree model.
     """
     print(" [DEMO START] Querying unauthenticated public Jolpica API...")
     
