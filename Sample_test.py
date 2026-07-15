@@ -169,7 +169,7 @@ def run_live_api_demo():
     df['ShouldPit'] = np.where(df['LapTime_Delta'] > 1.5, 1, 0)
 
     print("\n LIVE DEMO SAMPLE (UNAUTHENTICATED ENDPOINT) ")
-    sample_cols = ['year', 'raceId', 'driverId', 'LapNumber', 'TyreLife', 'Position', 'LapTime_Seconds', 'LapTime_Delta', 'ShouldPit']
+    sample_cols = ['year', 'raceId', 'driverId', 'LapNumber', 'TyreLife', 'Position', 'LapTime_Seconds', 'LapTime_Delta', 'Base_ShouldPit']
     # Sample 15 random entries across the entire multi-season dataset to verify data diversity
     print(df[sample_cols].sample(15).to_string(index=False))
     
