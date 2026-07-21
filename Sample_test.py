@@ -1,156 +1,87 @@
-import requests
 import pandas as pd
 import numpy as np
-import time
-import os  
-import json  
+import os
 
-def run_live_api_demo():
+def process_jolpica_csv_dump(data_dir="./jolpica-f1-csv"):
     """
-    Main orchestrator function that manages the entire F1 data pipeline:
-    1. Fetches historical race schedules and lap timing data from the public Jolpica API.
-    2. Implements a local file caching system to prevent redundant API calls (deduplication).
-    3. Handles API rate limits with automatic wait-and-retry logic (exponential backoff / 1-hour sleep).
-    4. Re-assembles downloaded race JSON files into a single unified Pandas DataFrame.
-    5. Performs feature engineering (time conversion, tyre life calculation, and delta timing)
-       to produce structured feature matrices (X) and target arrays (y) for a custom decision tree model.
+    Main pipeline function that loads raw database tables, joins driver and race information,
+    engineers features (TyreLife, LapTime_Delta), and prepares 70/30 train/test matrices.
     """
-    print(" [DEMO START] Querying unauthenticated public Jolpica API...")
-    
-    # Stores parsed lap dictionaries before converting them to a Pandas DataFrame
-    all_laps = []
-    
-    # Establish a persistent local folder to cache individual race JSON files.
-    # This acts as our local database to avoid hitting the API limit on rerun.
-    CACHE_DIR = "f1_race_cache"
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    
-    # Loop chronologically through the ground-effect regulation era (2022-2025)
-    for season in range(2022, 2026):
-        print(f"Fetching {season} season.")
-        schedule_url = f"https://api.jolpi.ca/ergast/f1/{season}.json"
+    print(f" [LOCAL PROCESSING] Loading CSV files from '{data_dir}'...")
 
-        try:
-            # Query the season schedule to find out how many races occurred and their rounds
-            schedule_url_response = requests.get(schedule_url)
-            
-            # Check if our schedule query is being rate-limited (HTTP status 429).
-            # If throttled, sleep for 1 hour to let the unauthenticated API window refresh.
-            if schedule_url_response.status_code == 429:
-                print("Rate limit hit on schedule endpoint! Sleeping for 1 hour...")
-                time.sleep(3600)
-                schedule_url_response = requests.get(schedule_url)
-                
-            schedule = schedule_url_response.json()
-            races = schedule['MRData']['RaceTable']['Races']
-        except Exception as e:
-            print(f"Could not fetch schedule for {season}: {e}")
-            continue
+    # READ RAW DATABASE TABLES FROM DISK 
+    try:
+        # Load core entity tables
+        seasons_df = pd.read_csv(os.path.join(data_dir, "formula_one_season.csv"))
+        rounds_df = pd.read_csv(os.path.join(data_dir, "formula_one_round.csv"))
+        drivers_df = pd.read_csv(os.path.join(data_dir, "formula_one_driver.csv"))
+        laps_df = pd.read_csv(os.path.join(data_dir, "formula_one_lap.csv"))
         
-        print(f"{len(races)} races found.")
-        
-        # Iterate over every Grand Prix round scheduled in the current season
-        for race in races:
-            round_num = race['round']
-            
-            # Local cache verification:
-            # Construct a unique file path for this specific race. If we already completed this
-            # download in a previous run, skip the network request entirely to save API bandwidth.
-            cache_file = os.path.join(CACHE_DIR, f"{season}_round_{round_num}.json")
-            if os.path.exists(cache_file):
-                print(f" -> [SKIP] {season} Round {round_num} already exists locally.")
-                continue
-    
-            print(f" Fetching live lap times for {season} Round {round_num}...")
-            # Request lap data with limit=1000 to fetch as many lap times as possible in a single request
-            lap_url = f"https://api.jolpi.ca/ergast/f1/{season}/{round_num}/laps.json?limit=1000"
-            
-            # Continuous retry loop to guarantee downloading the race even if throttled mid-execution
-            while True:
-                try:
-                    res = requests.get(lap_url)
-                    
-                    # Intercept API rate limitations (HTTP 429).
-                    # Hibernates the script for 1 hour, then loops back to retry the exact same race.
-                    if res.status_code == 429:
-                        print(f" !!! [429 RATE LIMIT] Hit ceiling at {season} Round {round_num}. Entering 1-hour hibernation...")
-                        time.sleep(3600)
-                        print(" Waking up. Retrying last request...")
-                        continue  
-                    
-                    response = res.json()
-                    
-                    # Isolate race records. Uses a safe get() fallback to prevent KeyErrors
-                    race_data_list = response.get("MRData", {}).get("RaceTable", {}).get("Races", [])
-                    if len(race_data_list) == 0:
-                        print(f"No lap data found for {season} Round {round_num}.")
-                        break  # Move on if the API simply has no records for this round
-                    
-                    # Write the raw JSON race dictionary directly to our local cache directory.
-                    # This ensures we never have to query this specific race from the web API again.
-                    with open(cache_file, 'w') as f:
-                        json.dump(race_data_list[0], f)
-                    print(f" -> [SAVED] Successfully cached {season} Round {round_num} locally.")
-                    break  # Success! Break out of the retry loop to process the next race
-                    
-                except Exception as e:
-                    print(f"Failed: {season} Round {round_num}. Could not fetch lap data: {e}")
-                    time.sleep(5) # Brief wait before retrying in case of temporary network dropouts
-                    continue
-            
-            # Polite pause between requests to respect the unauthenticated burst rate limit (4 req/sec)
-            time.sleep(0.3)
-            
-    # Process local files:
-    # After checking all seasons, assemble the master dataset from our local JSON cache.
-    # This allows the script to run instantly on subsequent executions without hitting the network.
-    print("\n[PROCESSING] Building final dataframe from local cache folder...")
-    for filename in os.listdir(CACHE_DIR):
-        if filename.endswith(".json"):
-            with open(os.path.join(CACHE_DIR, filename), 'r') as f:
-                race_data = json.load(f)
-                
-            # Extract year directly from file naming convention (e.g., '2024_round_1.json')
-            file_year = int(filename.split('_')[0])
-            laps_list = race_data.get("Laps", [])
-            
-            # Parse nested API JSON into clean, flat relational dictionaries
-            for lap in laps_list:
-                lap_num = int(lap['number'])
-                for timing in lap['Timings']:
-                    all_laps.append({
-                        'year': file_year,
-                        'raceId': race_data['raceName'],
-                        'driverId': timing['driverId'],
-                        'LapNumber': lap_num,
-                        'Position': int(timing['position']),
-                        'LapTime_Str': timing['time']
-                    })
-            
-    # Load all gathered dictionaries into a Pandas DataFrame
-    df = pd.DataFrame(all_laps)
-    
-    # Safety Check: Exit gracefully if the script runs but no local files exist to process
-    if df.empty:
-        print("\n [TERMINATED] No local data found and no new races downloaded. Check your cache folder.")
+        # Load database junction/mapping tables that connect drivers to sessions and races
+        session_entries_df = pd.read_csv(os.path.join(data_dir, "formula_one_sessionentry.csv"))
+        round_entries_df = pd.read_csv(os.path.join(data_dir, "formula_one_roundentry.csv"))
+        team_drivers_df = pd.read_csv(os.path.join(data_dir, "formula_one_teamdriver.csv"))
+
+    except FileNotFoundError as e:
+        print(f"\n [ERROR] Missing CSV files inside '{data_dir}'. Verify folder path.")
+        print(f" Details: {e}")
         return
-    
-    print(f"Successfully pulled raw lap structures. Rows downloaded: {len(df):,}")
-    
-    def text_time_to_seconds(time_str):
-        """
-        Converts F1 timing strings (e.g., "1:36.412" or "90.230") into float seconds.
-        If the string is corrupted or missing, defaults to 90.0 seconds to keep arrays numeric.
-        """
-        try:
-            if ':' in time_str:
-                parts = time_str.split(':')
-                return float(parts[0]) * 60 + float(parts[1])
-            return float(time_str)
-        except:
-            return 90.0 # Standard baseline fallback
 
-    # Apply timing string conversion across the entire dataframe
+    print(" -> All relational tables loaded successfully.")
+
+    # FILTER & RENAME KEYS FOR RELATIONAL JOINS 
+    # Filter only for seasons between 2022 and 2025 (Ground-Effect era)
+    seasons_era = seasons_df[(seasons_df['year'] >= 2022) & (seasons_df['year'] <= 2025)].copy()
+    seasons_era = seasons_era.rename(columns={'id': 'season_id'})
+
+    # Attach season year to each individual Grand Prix round
+    rounds_era = rounds_df.merge(seasons_era[['season_id', 'year']], on='season_id')
+    rounds_era = rounds_era.rename(columns={'id': 'round_id', 'name': 'raceName'})
+
+    # Standardize primary key column names across tables to prevent naming conflicts during joins
+    drivers_prep = drivers_df[['id', 'reference', 'abbreviation']].rename(columns={'id': 'driver_id', 'reference': 'driverCode'})
+    team_drivers_prep = team_drivers_df[['id', 'driver_id']].rename(columns={'id': 'team_driver_id'})
+    round_entries_prep = round_entries_df[['id', 'round_id', 'team_driver_id']].rename(columns={'id': 'round_entry_id'})
+    session_entries_prep = session_entries_df[['id', 'round_entry_id']].rename(columns={'id': 'session_entry_id'})
+
+    # EXECUTE TABLE MERGES (JOINING THE DATABASE) 
+    # Connect team driver entry to driver profile details
+    td_driver = team_drivers_prep.merge(drivers_prep, on='driver_id')
+    
+    # Connect driver profile to round entry details
+    re_td = round_entries_prep.merge(td_driver, on='team_driver_id')
+    
+    # Connect round entry to overall race information (race name, year)
+    re_round = re_td.merge(rounds_era[['round_id', 'year', 'raceName']], on='round_id')
+
+    # Connect session entries to race metadata
+    se_full = session_entries_prep.merge(re_round, on='round_entry_id')
+
+    # Merge individual lap records with complete driver and race metadata
+    df = laps_df.merge(se_full, on='session_entry_id')
+
+    # Standardize column headers for clarity
+    df = df.rename(columns={
+        'number': 'LapNumber',
+        'position': 'Position',
+        'time': 'LapTime_Str'
+    })
+
+    # TIME CONVERSION UTILITY 
+    def text_time_to_seconds(val):
+        """Converts strings like '1:36.412' or numbers into total floating-point seconds."""
+        try:
+            if pd.isna(val):
+                return 90.0
+            val_str = str(val)
+            if ':' in val_str:
+                parts = val_str.split(':')
+                return float(parts[0]) * 60 + float(parts[1])
+            return float(val_str)
+        except:
+            return 90.0 # Standard fallback if time is missing or unparseable
+
+    # Apply timing conversion across all lap records
     df['LapTime_Seconds'] = df['LapTime_Str'].apply(text_time_to_seconds)
     
     # Sort dataset chronologically per driver to calculate sequential metrics
@@ -177,17 +108,26 @@ def run_live_api_demo():
     # Convert numerical features and target labels directly into raw NumPy arrays.
     # This provides the clean matrix input required by custom-built Decision Tree algorithms.
     feature_cols = ['LapNumber', 'TyreLife', 'Position', 'Stint', 'LapTime_Seconds', 'LapTime_Delta']
-    X = df[feature_cols].to_numpy()
-    y = df['ShouldPit'].to_numpy()
-    
-    print("\n --- MODEL HANDOFF ---")
-    print(f"Feature Matrix X Shape: {X.shape} (Rows ready for scratch tree loops)")
-    print(f"Target Labels array y Shape: {y.shape}")
-    
-    # Export the engineered master dataset to CSV for model reuse
+
+    # Filter dataframe into training and testing sets based on race boundary
+    train_df = df[df['raceName'].isin(train_races)]
+    test_df = df[df['raceName'].isin(test_races)]
+
+    # Convert pandas slices into raw NumPy arrays for high-performance algorithm processing
+    X_train = train_df[feature_cols].to_numpy()
+    y_train = train_df['ShouldPit'].to_numpy()
+
+    X_test = test_df[feature_cols].to_numpy()
+    y_test = test_df['ShouldPit'].to_numpy()
+
+    print("\n --- MODEL HANDOFF (70/30 CHRONOLOGICAL SPLIT) ---")
+    print(f"X_train Matrix Shape: {X_train.shape} | y_train Shape: {y_train.shape}")
+    print(f"X_test  Matrix Shape: {X_test.shape}  | y_test  Shape: {y_test.shape}")
+
+    # Export master dataset to local CSV for easy reuse
     csv_name = "f1_lap_data.csv"
     df.to_csv(csv_name, index=False)
-    print(f"\n [SUCCESS] CSV File saved successfully as: {csv_name}")
+    print(f"\n [SUCCESS] Saved master dataset to: {csv_name}")
 
 if __name__ == "__main__":
     run_live_api_demo()
