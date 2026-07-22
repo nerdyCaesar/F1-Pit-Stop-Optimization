@@ -93,6 +93,11 @@ def process_jolpica_csv_dump(data_dir="./jolpica-f1-csv"):
     # Target label: ShouldPit = 1 only for organic pace loss (> 1.5s) on track
     df['ShouldPit'] = np.where((df['LapTime_Delta'] > 1.5) & (df['IsPitLap'] == 0), 1, 0)
 
+    #Fixed stint using jolpica pit data
+    df['endpoint_Stint'] = df.groupby(['year', 'raceName', 'driverCode'])['endpoint_shouldpit'].transform(lambda x: x.shift(fill_value=0).cumsum() + 1)
+    #Fixed TyreLife using jolpica pit data
+    df['endpoint_TyreLife'] = df.groupby(['year', 'raceName', 'driverCode', 'endpoint_Stint']).cumcount() + 1
+
     print(f"\nSuccessfully processed {len(df):,} total laps across 2022-2025.")
 
     # 70/30 CHRONOLOGICAL TRAIN/TEST SPLIT 
