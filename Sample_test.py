@@ -17,6 +17,7 @@ def process_jolpica_csv_dump(data_dir="./jolpica-f1-csv"):
         laps_df = pd.read_csv(os.path.join(data_dir, "formula_one_lap.csv"))
         
         session_entries_df = pd.read_csv(os.path.join(data_dir, "formula_one_sessionentry.csv"))
+        sessions_df = pd.read_csv(os.path.join(data_dir, "formula_one_session.csv"))
         round_entries_df = pd.read_csv(os.path.join(data_dir, "formula_one_roundentry.csv"))
         team_drivers_df = pd.read_csv(os.path.join(data_dir, "formula_one_teamdriver.csv"))
 
@@ -34,10 +35,11 @@ def process_jolpica_csv_dump(data_dir="./jolpica-f1-csv"):
     rounds_era = rounds_df.merge(seasons_era[['season_id', 'year']], on='season_id')
     rounds_era = rounds_era.rename(columns={'id': 'round_id', 'name': 'raceName'})
 
+    race_sessions = (sessions_df[sessions_df['type'] == 'R'][['id']].rename(columns={'id': 'session_id'}))
     drivers_prep = drivers_df[['id', 'reference', 'abbreviation']].rename(columns={'id': 'driver_id', 'reference': 'driverCode'})
     team_drivers_prep = team_drivers_df[['id', 'driver_id']].rename(columns={'id': 'team_driver_id'})
     round_entries_prep = round_entries_df[['id', 'round_id', 'team_driver_id']].rename(columns={'id': 'round_entry_id'})
-    session_entries_prep = session_entries_df[['id', 'round_entry_id']].rename(columns={'id': 'session_entry_id'})
+    session_entries_prep = session_entries_df[['id', 'round_entry_id', 'session_id']].rename(columns={'id': 'session_entry_id'}).merge(race_sessions, on='session_id')
 
     # EXECUTE TABLE MERGES
     td_driver = team_drivers_prep.merge(drivers_prep, on='driver_id')
