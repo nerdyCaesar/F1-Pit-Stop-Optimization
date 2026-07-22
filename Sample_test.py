@@ -37,7 +37,7 @@ def process_jolpica_csv_dump(data_dir="./jolpica-f1-csv"):
     rounds_era = rounds_df.merge(seasons_era[['season_id', 'year']], on='season_id')
     rounds_era = rounds_era.rename(columns={'id': 'round_id', 'name': 'raceName'})
 
-    pit_prep = pit_df[['lap_id', 'local_timestamp']]
+    pit_prep = pit_df[['lap_id']]
     race_sessions = (sessions_df[sessions_df['type'] == 'R'][['id']].rename(columns={'id': 'session_id'}))
     drivers_prep = drivers_df[['id', 'reference', 'abbreviation']].rename(columns={'id': 'driver_id', 'reference': 'driverCode'})
     team_drivers_prep = team_drivers_df[['id', 'driver_id']].rename(columns={'id': 'team_driver_id'})
@@ -52,8 +52,7 @@ def process_jolpica_csv_dump(data_dir="./jolpica-f1-csv"):
     df = laps_df.merge(se_full, on='session_entry_id')
 
     #Additional Pit Column
-    df = pd.merge(df, pit_prep, left_on='id', right_on='lap_id', how='left')
-    df = df.rename(columns={'local_timestamp': 'endpoint_shouldpit'})
+    df = pd.merge(df, pit_prep, left_on='id', right_on='lap_id', how='left').rename(columns={'lap_id': 'endpoint_shouldpit'})
     #If a timestamp does not exist, then it didn't pit, so it's set to 0.
     df['endpoint_shouldpit'] = df['endpoint_shouldpit'].notna().astype(int)
 
