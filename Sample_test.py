@@ -21,6 +21,8 @@ def process_jolpica_csv_dump(data_dir="./jolpica-f1-csv"):
         round_entries_df = pd.read_csv(os.path.join(data_dir, "formula_one_roundentry.csv"))
         team_drivers_df = pd.read_csv(os.path.join(data_dir, "formula_one_teamdriver.csv"))
 
+        pit_df = pd.read_csv(os.path.join(data_dir, "formula_one_pitstop.csv"))
+
     except FileNotFoundError as e:
         print(f"\n [ERROR] Missing CSV files inside '{data_dir}'. Verify folder path.")
         print(f" Details: {e}")
@@ -35,6 +37,7 @@ def process_jolpica_csv_dump(data_dir="./jolpica-f1-csv"):
     rounds_era = rounds_df.merge(seasons_era[['season_id', 'year']], on='season_id')
     rounds_era = rounds_era.rename(columns={'id': 'round_id', 'name': 'raceName'})
 
+    pit_prep = pit_df[['lap_id', 'local_timestamp']]
     race_sessions = (sessions_df[sessions_df['type'] == 'R'][['id']].rename(columns={'id': 'session_id'}))
     drivers_prep = drivers_df[['id', 'reference', 'abbreviation']].rename(columns={'id': 'driver_id', 'reference': 'driverCode'})
     team_drivers_prep = team_drivers_df[['id', 'driver_id']].rename(columns={'id': 'team_driver_id'})
@@ -47,6 +50,12 @@ def process_jolpica_csv_dump(data_dir="./jolpica-f1-csv"):
     re_round = re_td.merge(rounds_era[['round_id', 'year', 'raceName']], on='round_id')
     se_full = session_entries_prep.merge(re_round, on='round_entry_id')
     df = laps_df.merge(se_full, on='session_entry_id')
+
+    #Additional Pit Column
+    df = pd.merge(df, pit_prep, left_on='id', right_on='lap_id', how='left')
+    df = df.rename(columns={'local_timestamp': 'endpoint_shouldpit'})
+    #If a timestamp does not exist, then it didn't pit, so it's set to 0.
+    df['endpoint_shouldpit'] = df['endpoint_shouldpit'].notna().astype(int)
 
     df = df.rename(columns={
         'number': 'LapNumber',
