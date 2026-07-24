@@ -93,7 +93,7 @@ def process_jolpica_csv_dump(data_dir="./jolpica-f1-csv"):
     df['ShouldPit'] = np.where((df['LapTime_Delta'] > 1.5) & (df['IsPitLap'] == 0), 1, 0)
 
     #Fixed stint using jolpica pit data
-    df['endpoint_Stint'] = df.groupby(['year', 'raceName', 'driverCode'])['endpoint_shouldpit'].transform(lambda x: x.shift(fill_value=0).cumsum() + 1)
+    df['endpoint_Stint'] = df.groupby(['year', 'raceName', 'driverCode'])['endpoint_shouldpit'].transform(lambda x: x.shift(2, fill_value=0).cumsum() + 1)
     #Fixed TyreLife using jolpica pit data
     df['endpoint_TyreLife'] = df.groupby(['year', 'raceName', 'driverCode', 'endpoint_Stint']).cumcount() + 1
 
