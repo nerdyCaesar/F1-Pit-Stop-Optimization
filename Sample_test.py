@@ -53,8 +53,6 @@ def process_jolpica_csv_dump(data_dir="./jolpica-f1-csv"):
 
     #Additional Pit Column
     df = pd.merge(df, pit_prep, left_on='id', right_on='lap_id', how='left').rename(columns={'lap_id': 'endpoint_shouldpit'})
-    #If a timestamp does not exist, then it didn't pit, so it's set to 0.
-    df['endpoint_shouldpit'] = df['endpoint_shouldpit'].notna().astype(int)
 
     df = df.rename(columns={
         'number': 'LapNumber',
@@ -63,23 +61,24 @@ def process_jolpica_csv_dump(data_dir="./jolpica-f1-csv"):
     })
 
     # TIME CONVERSION UTILITY 
-    def text_time_to_seconds(val):
-        try:
-            if pd.isna(val):
-                return 90.0
-            val_str = str(val)
-            if ':' in val_str:
-                parts = val_str.split(':')
-                return float(parts[0]) * 60 + float(parts[1])
-            return float(val_str)
-        except:
-            return 90.0
-
-    df['LapTime_Seconds'] = df['LapTime_Str'].apply(text_time_to_seconds)
+    df['LapTime_Seconds'] = pd.to_timedelta(
+        df['LapTime_Str'],
+        errors = 'coerce'
+        ).dt.total_seconds().fillna(90.0)
     
     # Sort chronologically per driver per race
     df = df.sort_values(by=['year', 'raceName', 'driverCode', 'LapNumber']).reset_index(drop=True)
 
+    #Shift pit labels so each lap predicts the next lap's pit stop
+    df['endpoint_shouldpit'] = (
+        df['endpoint_shouldpit']
+        .notna()
+        .groupby([df['year'], df['raceName'], df['driverCode']])
+        .shift(-1)
+        .fillna(False)
+        .astype(int)
+    )
+    
     # FEATURE ENGINEERING & STINT RESETS 
     df['LapTime_Delta'] = df.groupby(['year', 'raceName', 'driverCode'])['LapTime_Seconds'].diff().fillna(0)
     
@@ -107,16 +106,16 @@ def process_jolpica_csv_dump(data_dir="./jolpica-f1-csv"):
     train_races = unique_races[:split_boundary]
     test_races = unique_races[split_boundary:]
 
-    feature_cols = ['LapNumber', 'TyreLife', 'Position', 'Stint', 'LapTime_Seconds', 'LapTime_Delta']
+    feature_cols = ['LapNumber', 'endpoint_TyreLife', 'Position', 'endpoint_Stint', 'LapTime_Seconds']
 
     train_df = df[df['raceName'].isin(train_races)]
     test_df = df[df['raceName'].isin(test_races)]
 
     X_train = train_df[feature_cols].to_numpy()
-    y_train = train_df['ShouldPit'].to_numpy()
+    y_train = train_df['endpoint_shouldpit'].to_numpy()
 
     X_test = test_df[feature_cols].to_numpy()
-    y_test = test_df['ShouldPit'].to_numpy()
+    y_test = test_df['endpoint_shouldpit'].to_numpy()
 
     print("\n --- MODEL HANDOFF (70/30 CHRONOLOGICAL SPLIT) ---")
     print(f"X_train Matrix Shape: {X_train.shape} | y_train Shape: {y_train.shape}")
