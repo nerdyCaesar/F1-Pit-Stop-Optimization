@@ -136,9 +136,7 @@ def demonstrate_race_predictions(clf, df, feature_cols, target_race_name="Abu Dh
                 continue
 
         # Filter driver output to highlight pit stop laps or predicted pit calls
-        driver_pit_laps = driver_df[
-            (driver_df['endpoint_shouldpit'] == 1) | (driver_df['Predicted_Pit'] == 1)
-        ][display_cols].sort_values(by='LapNumber')
+        driver_pit_laps = driver_df[display_cols].sort_values(by='LapNumber')
 
         print(f"\n" + "="*70)
         print(f" TELEMETRY & PREDICTIONS FOR DRIVER: {user_input}")
