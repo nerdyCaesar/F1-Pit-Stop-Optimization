@@ -1,15 +1,28 @@
 import pandas as pd
 import numpy as np
 import os
+from pathlib import Path
 
-def process_jolpica_csv_dump(data_dir="./jolpica-f1-csv"):
+# Set BASE_DIR to the folder where this script lives, ensuring file paths work anywhere
+BASE_DIR = Path(__file__).resolve().parent
+
+def process_jolpica_csv_dump(data_dir=None, output_csv=None):
     """
-    Main pipeline function that loads raw database tables, joins driver and race information,
-    engineers features (TyreLife, LapTime_Delta), and prepares 70/30 train/test matrices.
+    This is the main data pipeline function.
+    It reads raw Formula 1 database files, links them together, cleans up bad lap times,
+    creates custom features like tyre age, sets up our target variable, and splits the data
+    chronologically into training and testing sets.
     """
+    
+    # Use default folder locations if custom paths aren't provided
+    if data_dir is None:
+        data_dir = BASE_DIR / "jolpica-f1-csv"
+    if output_csv is None:
+        output_csv = BASE_DIR / "f1_lap_data.csv"
+
     print(f" [LOCAL PROCESSING] Loading CSV files from '{data_dir}'...")
 
-    # READ RAW DATABASE TABLES FROM DISK 
+    # Read all the individual relational database tables from disk
     try:
         seasons_df = pd.read_csv(os.path.join(data_dir, "formula_one_season.csv"))
         rounds_df = pd.read_csv(os.path.join(data_dir, "formula_one_round.csv"))
@@ -20,97 +33,95 @@ def process_jolpica_csv_dump(data_dir="./jolpica-f1-csv"):
         sessions_df = pd.read_csv(os.path.join(data_dir, "formula_one_session.csv"))
         round_entries_df = pd.read_csv(os.path.join(data_dir, "formula_one_roundentry.csv"))
         team_drivers_df = pd.read_csv(os.path.join(data_dir, "formula_one_teamdriver.csv"))
-
         pit_df = pd.read_csv(os.path.join(data_dir, "formula_one_pitstop.csv"))
 
     except FileNotFoundError as e:
-        print(f"\n [ERROR] Missing CSV files inside '{data_dir}'. Verify folder path.")
-        print(f" Details: {e}")
-        return
+        print(f"\n [CRITICAL ERROR] Missing required CSV file in '{data_dir}'.")
+        raise FileNotFoundError(f"Pipeline stopped due to missing file in '{data_dir}'.") from e
 
     print(" -> All relational tables loaded successfully.")
 
-    # FILTER & RENAME KEYS FOR RELATIONAL JOINS 
+    # Filter for modern era seasons (2022-2025) and clean up column names
     seasons_era = seasons_df[(seasons_df['year'] >= 2022) & (seasons_df['year'] <= 2025)].copy()
     seasons_era = seasons_era.rename(columns={'id': 'season_id'})
 
     rounds_era = rounds_df.merge(seasons_era[['season_id', 'year']], on='season_id')
-    rounds_era = rounds_era.rename(columns={'id': 'round_id', 'name': 'raceName'})
+    rounds_era = rounds_era.rename(columns={'id': 'round_id', 'name': 'raceName', 'number': 'roundNumber'})
 
+    # Extract key ID columns from supporting tables so we can join them together
     pit_prep = pit_df[['lap_id']]
-    race_sessions = (sessions_df[sessions_df['type'] == 'R'][['id']].rename(columns={'id': 'session_id'}))
+    race_sessions = sessions_df[sessions_df['type'] == 'R'][['id']].rename(columns={'id': 'session_id'})
     drivers_prep = drivers_df[['id', 'reference', 'abbreviation']].rename(columns={'id': 'driver_id', 'reference': 'driverCode'})
     team_drivers_prep = team_drivers_df[['id', 'driver_id']].rename(columns={'id': 'team_driver_id'})
     round_entries_prep = round_entries_df[['id', 'round_id', 'team_driver_id']].rename(columns={'id': 'round_entry_id'})
     session_entries_prep = session_entries_df[['id', 'round_entry_id', 'session_id']].rename(columns={'id': 'session_entry_id'}).merge(race_sessions, on='session_id')
 
-    # EXECUTE TABLE MERGES
+    # Join all relational tables into one big DataFrame containing every lap
     td_driver = team_drivers_prep.merge(drivers_prep, on='driver_id')
     re_td = round_entries_prep.merge(td_driver, on='team_driver_id')
-    re_round = re_td.merge(rounds_era[['round_id', 'year', 'raceName']], on='round_id')
+    re_round = re_td.merge(rounds_era[['round_id', 'year', 'roundNumber', 'raceName']], on='round_id')
     se_full = session_entries_prep.merge(re_round, on='round_entry_id')
     df = laps_df.merge(se_full, on='session_entry_id')
 
-    #Additional Pit Column
+    # Match pit stop events directly to the specific lap IDs where they occurred
     df = pd.merge(df, pit_prep, left_on='id', right_on='lap_id', how='left').rename(columns={'lap_id': 'endpoint_shouldpit'})
 
+    # Rename key columns to readable names
     df = df.rename(columns={
         'number': 'LapNumber',
         'position': 'Position',
         'time': 'LapTime_Str'
     })
 
-    # TIME CONVERSION UTILITY 
-    df['LapTime_Seconds'] = pd.to_timedelta(
-        df['LapTime_Str'],
-        errors = 'coerce'
-        ).dt.total_seconds().fillna(90.0)
+    # Parse lap time text (e.g. "1:28.412") into numeric seconds (88.412 seconds)
+    df['LapTime_Seconds'] = pd.to_timedelta(df['LapTime_Str'], errors='coerce').dt.total_seconds()
     
-    # Sort chronologically per driver per race
-    df = df.sort_values(by=['year', 'raceName', 'driverCode', 'LapNumber']).reset_index(drop=True)
+    # Drop any corrupted or missing lap time entries to keep data pure
+    df = df.dropna(subset=['LapTime_Seconds']).copy()
 
-    #Shift pit labels so each lap predicts the next lap's pit stop
+    # Create a unique key for each race event using (year, roundNumber) to keep exact order
+    df['event_key'] = list(zip(df['year'], df['roundNumber']))
+    
+    # Sort data chronologically per driver per race
+    df = df.sort_values(by=['year', 'roundNumber', 'driverCode', 'LapNumber']).reset_index(drop=True)
+
+    # Target Shift (Prevents Data Leakage)
+    # Shift the pit stop flag back by 1 lap so telemetry on Lap N predicts if the driver PITS ON LAP N+1
     df['endpoint_shouldpit'] = (
         df['endpoint_shouldpit']
         .notna()
-        .groupby([df['year'], df['raceName'], df['driverCode']])
+        .groupby([df['year'], df['roundNumber'], df['driverCode']])
         .shift(-1)
-        .fillna(False)
+        .fillna(0)
         .astype(int)
     )
+
+    # Feature Engineering
+    # Calculate current stint number (increments whenever a pit stop occurs)
+    df['endpoint_Stint'] = df.groupby(['year', 'roundNumber', 'driverCode'])['endpoint_shouldpit'].transform(
+        lambda x: x.shift(2, fill_value=0).cumsum() + 1
+    )
+    # Track age of tyres (counts laps completed on the current set, resets to 1 on a new stint)
+    df['endpoint_TyreLife'] = df.groupby(['year', 'roundNumber', 'driverCode', 'endpoint_Stint']).cumcount() + 1
+
+    print(f"\nSuccessfully processed {len(df):,} total valid laps across 2022-2025.")
+
+    # True Chronological Train/Test Split
+    # Sort all distinct Grand Prix events chronologically
+    unique_events = df[['year', 'roundNumber']].drop_duplicates().sort_values(by=['year', 'roundNumber'])
     
-    # FEATURE ENGINEERING & STINT RESETS 
-    df['LapTime_Delta'] = df.groupby(['year', 'raceName', 'driverCode'])['LapTime_Seconds'].diff().fillna(0)
+    # Use the first 70% of historical races for training, and the remaining 30% for testing
+    split_boundary = int(len(unique_events) * 0.70)
+    train_events = set(map(tuple, unique_events.iloc[:split_boundary].to_numpy()))
     
-    # Identify pit stops (lap time spike > 15s indicates pit lane entry)
-    df['IsPitLap'] = np.where(df['LapTime_Delta'] > 15.0, 1, 0)
-    
-    # Increment Stint count and reset TyreLife to 1 on pit stops
-    df['Stint'] = df.groupby(['year', 'raceName', 'driverCode'])['IsPitLap'].cumsum() + 1
-    df['TyreLife'] = df.groupby(['year', 'raceName', 'driverCode', 'Stint']).cumcount() + 1
+    train_mask = df['event_key'].isin(train_events)
+    train_df = df[train_mask]
+    test_df = df[~train_mask]
 
-    # Target label: ShouldPit = 1 only for organic pace loss (> 1.5s) on track
-    df['ShouldPit'] = np.where((df['LapTime_Delta'] > 1.5) & (df['IsPitLap'] == 0), 1, 0)
-
-    #Fixed stint using jolpica pit data
-    df['endpoint_Stint'] = df.groupby(['year', 'raceName', 'driverCode'])['endpoint_shouldpit'].transform(lambda x: x.shift(2, fill_value=0).cumsum() + 1)
-    #Fixed TyreLife using jolpica pit data
-    df['endpoint_TyreLife'] = df.groupby(['year', 'raceName', 'driverCode', 'endpoint_Stint']).cumcount() + 1
-
-    print(f"\nSuccessfully processed {len(df):,} total laps across 2022-2025.")
-
-    # 70/30 CHRONOLOGICAL TRAIN/TEST SPLIT 
-    unique_races = df['raceName'].unique()
-    split_boundary = int(len(unique_races) * 0.70)
-
-    train_races = unique_races[:split_boundary]
-    test_races = unique_races[split_boundary:]
-
+    # Features used by the Decision Tree model to make decisions
     feature_cols = ['LapNumber', 'endpoint_TyreLife', 'Position', 'endpoint_Stint', 'LapTime_Seconds']
 
-    train_df = df[df['raceName'].isin(train_races)]
-    test_df = df[df['raceName'].isin(test_races)]
-
+    # Convert pandas columns into raw NumPy matrices for scikit-learn
     X_train = train_df[feature_cols].to_numpy()
     y_train = train_df['endpoint_shouldpit'].to_numpy()
 
@@ -121,10 +132,12 @@ def process_jolpica_csv_dump(data_dir="./jolpica-f1-csv"):
     print(f"X_train Matrix Shape: {X_train.shape} | y_train Shape: {y_train.shape}")
     print(f"X_test  Matrix Shape: {X_test.shape}  | y_test  Shape: {y_test.shape}")
 
-    # Export clean master dataset
-    csv_name = "f1_lap_data.csv"
-    df.to_csv(csv_name, index=False)
-    print(f"\n [SUCCESS] Saved master dataset to: {csv_name}")
+    # Export clean combined dataset to CSV
+    df.to_csv(output_csv, index=False)
+    print(f"\n [SUCCESS] Saved master dataset to: {output_csv}")
+
+    # Return all 6 objects needed by train_model.py
+    return X_train, y_train, X_test, y_test, feature_cols, df
 
 if __name__ == "__main__":
     process_jolpica_csv_dump()
