@@ -100,7 +100,7 @@ def demonstrate_race_predictions(clf, df, feature_cols, target_race_name="Abu Dh
     Evaluates model performance on a single target race and interactively queries driver telemetry.
     """
     print("\n" + "="*70)
-    print(f"      RACE DEMONSTRATION: {target_year} {target_race_name}      ")
+    print(f"     RACE DEMONSTRATION: {target_year} {target_race_name}      ")
     print("="*70)
 
     race_mask = (df['raceName'] == target_race_name) & (df['year'] == target_year)
@@ -131,7 +131,7 @@ def demonstrate_race_predictions(clf, df, feature_cols, target_race_name="Abu Dh
     race_df['Evaluation'] = race_df.apply(get_match_label, axis=1)
 
     display_cols = [
-        'driverCode', 'LapNumber', 'endpoint_Stint', 'endpoint_TyreLife', 
+        'driverCode', 'LapNumber', 'is_lap_1', 'endpoint_Stint', 'endpoint_TyreLife', 
         'LapTime_Seconds', 'Actual_Status', 'Predicted_Status', 'Evaluation'
     ]
 
