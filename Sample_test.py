@@ -1,6 +1,4 @@
 import pandas as pd
-import numpy as np
-import os
 from pathlib import Path
 
 # Set BASE_DIR to the folder where this script lives, ensuring file paths work anywhere
@@ -24,16 +22,16 @@ def process_jolpica_csv_dump(data_dir=None, output_csv=None):
 
     # Read all the individual relational database tables from disk
     try:
-        seasons_df = pd.read_csv(os.path.join(data_dir, "formula_one_season.csv"))
-        rounds_df = pd.read_csv(os.path.join(data_dir, "formula_one_round.csv"))
-        drivers_df = pd.read_csv(os.path.join(data_dir, "formula_one_driver.csv"))
-        laps_df = pd.read_csv(os.path.join(data_dir, "formula_one_lap.csv"))
+        seasons_df = pd.read_csv(data_dir / "formula_one_season.csv")
+        rounds_df = pd.read_csv(data_dir / "formula_one_round.csv")
+        drivers_df = pd.read_csv(data_dir / "formula_one_driver.csv")
+        laps_df = pd.read_csv(data_dir / "formula_one_lap.csv")
         
-        session_entries_df = pd.read_csv(os.path.join(data_dir, "formula_one_sessionentry.csv"))
-        sessions_df = pd.read_csv(os.path.join(data_dir, "formula_one_session.csv"))
-        round_entries_df = pd.read_csv(os.path.join(data_dir, "formula_one_roundentry.csv"))
-        team_drivers_df = pd.read_csv(os.path.join(data_dir, "formula_one_teamdriver.csv"))
-        pit_df = pd.read_csv(os.path.join(data_dir, "formula_one_pitstop.csv"))
+        session_entries_df = pd.read_csv(data_dir / "formula_one_sessionentry.csv")
+        sessions_df = pd.read_csv(data_dir / "formula_one_session.csv")
+        round_entries_df = pd.read_csv(data_dir / "formula_one_roundentry.csv")
+        team_drivers_df = pd.read_csv(data_dir / "formula_one_teamdriver.csv")
+        pit_df = pd.read_csv(data_dir / "formula_one_pitstop.csv")
 
     except FileNotFoundError as e:
         print(f"\n [CRITICAL ERROR] Missing required CSV file in '{data_dir}'.")
@@ -49,7 +47,6 @@ def process_jolpica_csv_dump(data_dir=None, output_csv=None):
     rounds_era = rounds_era.rename(columns={'id': 'round_id', 'name': 'raceName', 'number': 'roundNumber'})
 
     # Extract key ID columns from supporting tables so we can join them together
-    pit_prep = pit_df[['lap_id']]
     race_sessions = sessions_df[sessions_df['type'] == 'R'][['id']].rename(columns={'id': 'session_id'})
     drivers_prep = drivers_df[['id', 'reference', 'abbreviation']].rename(columns={'id': 'driver_id', 'reference': 'driverCode'})
     team_drivers_prep = team_drivers_df[['id', 'driver_id']].rename(columns={'id': 'team_driver_id'})
@@ -64,7 +61,7 @@ def process_jolpica_csv_dump(data_dir=None, output_csv=None):
     df = laps_df.merge(se_full, on='session_entry_id')
 
     # Match pit stop events directly to the specific lap IDs where they occurred
-    df = pd.merge(df, pit_prep, left_on='id', right_on='lap_id', how='left').rename(columns={'lap_id': 'endpoint_shouldpit'})
+    df = df.merge(pit_df[['lap_id']], left_on='id', right_on='lap_id', how='left').rename(columns={'lap_id': 'endpoint_shouldpit'})
 
     # Rename key columns to readable names
     df = df.rename(columns={
@@ -79,9 +76,6 @@ def process_jolpica_csv_dump(data_dir=None, output_csv=None):
     # Drop any corrupted or missing lap time entries to keep data pure
     df = df.dropna(subset=['LapTime_Seconds']).copy()
 
-    # Create a unique key for each race event using (year, roundNumber) to keep exact order
-    df['event_key'] = list(zip(df['year'], df['roundNumber']))
-    
     # Sort data chronologically per driver per race
     df = df.sort_values(by=['year', 'roundNumber', 'driverCode', 'LapNumber']).reset_index(drop=True)
 
@@ -114,7 +108,8 @@ def process_jolpica_csv_dump(data_dir=None, output_csv=None):
     split_boundary = int(len(unique_events) * 0.70)
     train_events = set(map(tuple, unique_events.iloc[:split_boundary].to_numpy()))
     
-    train_mask = df['event_key'].isin(train_events)
+    # Create a mask to separate the training and testing data
+    train_mask = pd.Series(list(zip(df['year'], df['roundNumber'])), index=df.index).isin(train_events)
     train_df = df[train_mask]
     test_df = df[~train_mask]
 

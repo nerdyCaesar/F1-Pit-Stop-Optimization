@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
@@ -42,7 +41,7 @@ def run_step_1(X_train, y_train, X_test, y_test, feature_cols):
     # Save Decision Tree Diagram
     plt.figure(figsize=(18, 9))
     plot_tree(clf, feature_names=feature_cols, class_names=['Stay Out', 'Pit'], filled=True, fontsize=9)
-    plt.savefig(BASE_DIR / 'decision_tree_diagram.png', dpi=300)
+    plt.savefig(BASE_DIR / 'decision_tree_diagram.png', dpi=300, bbox_inches='tight')
     plt.close()
 
     print(" -> Saved 'confusion_matrix.png' and 'decision_tree_diagram.png'.")
