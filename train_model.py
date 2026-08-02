@@ -7,9 +7,40 @@ from sklearn.tree import DecisionTreeClassifier, plot_tree
 from sklearn.model_selection import GroupKFold
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
 
-from Sample_test import process_jolpica_csv_dump
-
 BASE_DIR = Path(__file__).resolve().parent
+MASTER_CSV = BASE_DIR / "f1_lap_data_master.csv"
+TRAINING_CSV = BASE_DIR / "f1_lap_data.csv"
+
+MODEL_FEATURES = [
+    "LapNumber",
+    "is_lap_1",
+    "endpoint_TyreLife",
+    "Position",
+    "endpoint_Stint",
+    "LapTime_Seconds",
+    "stint_comp",
+]
+
+# Load the training data accumulated from Sample_test.py
+def load_training_data():
+    print(" [LOCAL PROCESSING] Loading processed datasets...")
+
+    try:
+        train_df = pd.read_csv(TRAINING_CSV)
+        master_df = pd.read_csv(MASTER_CSV)
+
+    except FileNotFoundError as e:
+        print("\n [CRITICAL ERROR] Missing processed dataset.")
+        raise FileNotFoundError("Run sample_test.py first.") from e
+
+    print(" -> Training and master datasets loaded successfully.")
+
+    X = train_df[MODEL_FEATURES].to_numpy()
+    y = train_df["endpoint_shouldpit"].to_numpy()
+    groups = train_df["race_group"].to_numpy()
+
+    return (X, y, groups, MODEL_FEATURES, master_df)
+
 
 def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
     """
@@ -190,6 +221,6 @@ def demonstrate_race_predictions(clf, df, feature_cols, target_race_name="Abu Dh
 
 
 if __name__ == "__main__":
-    X, y, groups, feature_cols, full_df = process_jolpica_csv_dump()
+    X, y, groups, feature_cols, full_df = load_training_data()
     clf = run_step_1_kfold(X, y, groups, feature_cols, n_splits=5)
     demonstrate_race_predictions(clf, full_df, feature_cols, target_race_name="Abu Dhabi Grand Prix", target_year=2024)
