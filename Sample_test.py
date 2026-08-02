@@ -86,6 +86,21 @@ def process_jolpica_csv_dump(data_dir=None, output_csv=None):
     )
     df['endpoint_TyreLife'] = df.groupby(['year', 'roundNumber', 'driverCode', 'endpoint_Stint']).cumcount() + 1
 
+    # Store the max stint of each [raceName, year, driver] 
+    df['max_stint'] = df.groupby(['year', 'raceName', 'driverCode'])['endpoint_Stint'].transform('max')
+    
+    # Filter out the max stints cause they don't end in a pit
+    valid_stints_df = df[df['endpoint_Stint'] != df['max_stint']]
+    
+    # Calculate median per race exclusively
+    race_medians = valid_stints_df.groupby('raceName')['endpoint_Stint'].median()
+    
+    # Map back each race median to the orignal df and create current v. typical stint ratio
+    df['stint_comp'] = df['endpoint_TyreLife'] / df['raceName'].map(race_medians)
+    
+    # Drop helper column
+    df = df.drop(columns=['max_stint'])
+
     # Feature Engineering: Add binary is_lap_1 feature
     df['is_lap_1'] = (df['LapNumber'] == 1).astype(int)
 
@@ -94,7 +109,7 @@ def process_jolpica_csv_dump(data_dir=None, output_csv=None):
 
     print(f"\nSuccessfully processed {len(df):,} total valid laps across 2022-2025.")
 
-    feature_cols = ['LapNumber', 'is_lap_1', 'endpoint_TyreLife', 'Position', 'endpoint_Stint', 'LapTime_Seconds']
+    feature_cols = ['LapNumber', 'is_lap_1', 'endpoint_TyreLife', 'Position', 'endpoint_Stint', 'LapTime_Seconds', 'stint_comp']
 
     X = df[feature_cols].to_numpy()
     y = df['endpoint_shouldpit'].to_numpy()
