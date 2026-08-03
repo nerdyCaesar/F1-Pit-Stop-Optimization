@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import joblib
 from pathlib import Path
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 from sklearn.model_selection import GroupKFold
@@ -115,6 +116,9 @@ def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
         random_state=42
     )
     final_clf.fit(X, y)
+
+    #Save model pkl file for streamlit
+    joblib.dump(final_clf, "final_model.pkl")
 
     # Save Decision Tree Diagram
     plt.figure(figsize=(18, 9))
