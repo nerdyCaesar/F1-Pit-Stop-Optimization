@@ -3,10 +3,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
+import json
 from pathlib import Path
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GroupKFold
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import average_precision_score
+from sklearn.metrics import precision_recall_curve
 
 # Directory and File Setup
 BASE_DIR = Path(__file__).resolve().parent
@@ -63,9 +66,10 @@ def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
     print(f" -> Config: Threshold={PROBABILITY_THRESHOLD*100:.0f}% | Class Weights={CLASS_WEIGHTS} | Max Depth={MAX_DEPTH} | Estimators={N_ESTIMATORS}")
 
     gkf = GroupKFold(n_splits=n_splits)
-    fold_accuracies, fold_precisions, fold_recalls, fold_f1s = [], [], [], []
+    fold_accuracies, fold_precisions, fold_recalls, fold_f1s, fold_prauc = [], [], [], [], []
     
     oof_predictions = np.zeros(len(y))
+    oof_probablities = np.zeros(len(y))
 
     for fold, (train_idx, val_idx) in enumerate(gkf.split(X, y, groups), 1):
         X_tr, y_tr = X[train_idx], y[train_idx]
@@ -86,16 +90,22 @@ def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
         preds = (probs >= PROBABILITY_THRESHOLD).astype(int)
 
         oof_predictions[val_idx] = preds
+        oof_probablities[val_idx] = probs
 
         acc = accuracy_score(y_va, preds)
         prec = precision_score(y_va, preds, pos_label=1, zero_division=0)
         rec = recall_score(y_va, preds, pos_label=1, zero_division=0)
         f1 = f1_score(y_va, preds, pos_label=1, zero_division=0)
+        prauc = average_precision_score(y_va, probs)
+
 
         fold_accuracies.append(acc)
         fold_precisions.append(prec)
         fold_recalls.append(rec)
         fold_f1s.append(f1)
+        fold_prauc.append(prauc)
+
+        
 
         print(f" Fold {fold} | Acc: {acc*100:.2f}% | Pit Precision: {prec*100:.2f}% | Pit Recall: {rec*100:.2f}% | Pit F1: {f1:.2f}")
 
@@ -107,6 +117,15 @@ def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
     print(f" Mean Pit Recall       : {np.mean(fold_recalls)*100:.2f}%")
     print(f" Mean Pit F1-Score     : {np.mean(fold_f1s):.2f}")
     print("="*60)
+
+    #PRAUC calculations
+    base_rate = y.mean()
+    prauc_all = average_precision_score(y, oof_probablities)
+    print(f" PR-AUC by chance      : {base_rate:.4f}")
+    print(f" PR-AUC (out-of-fold)  : {prauc_all:.4f}")
+    print(f" Lift over chance      : {prauc_all/base_rate:.2f}x")
+    print(f" 'Never pit' baseline accuracy : {(1-base_rate)*100:.2f}%")
+
 
     print("\nOut-of-Fold Classification Report:")
     print(classification_report(y, oof_predictions, target_names=['Stay Out (0)', 'Pit Next Lap (1)']))
@@ -138,6 +157,20 @@ def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
 
     # Save model pkl file for Streamlit deployment
     joblib.dump(final_clf, BASE_DIR / "final_model.pkl")
+
+    metrics = {
+        "model_type": type(final_clf).__name__,
+        "threshold": PROBABILITY_THRESHOLD,
+        "pr_auc": float(average_precision_score(y, oof_probablities)),
+        "pr_auc_chance": float(y.mean()),
+        "never_pit_accuracy": float(1 - y.mean()),
+        "accuracy": float(np.mean(fold_accuracies)),
+        "precision": float(np.mean(fold_precisions)),
+        "recall": float(np.mean(fold_recalls)),
+        "f1": float(np.mean(fold_f1s)),
+    }
+    with open(BASE_DIR / "model_metrics.json", "w") as f:
+        json.dump(metrics, f, indent=2)
 
     # Save Feature Importance Diagram (Replaces plot_tree for Random Forests)
     plt.figure(figsize=(10, 5))

@@ -1,6 +1,7 @@
 import streamlit as st
 import joblib
 import pandas as pd
+import json
 from pathlib import Path
 
 # Set directories and csv locations
@@ -18,6 +19,8 @@ MODEL_FEATURES = [
     "stint_comp"
 ]
 
+PROBABILITY_THRESHOLD = 0.35
+
 # Load data and model
 model = joblib.load(MODEL_PATH)
 df = pd.read_csv(MASTER_CSV)
@@ -28,6 +31,31 @@ st.set_page_config(
     page_icon="🏎️",
     layout="wide"
 )
+
+with open(BASE_DIR / "model_metrics.json") as f:
+    M = json.load(f)
+
+st.divider()
+st.header("How good is this model, really?")
+
+a, b, c = st.columns(3)
+a.metric("PR-AUC (held-out)", f"{M['pr_auc']:.3f}",
+         f"{M['pr_auc']/M['pr_auc_chance']:.2f}x better than chance")
+b.metric("PR-AUC by chance", f"{M['pr_auc_chance']:.3f}",
+         help="Equals the pit rate. This is what random guessing scores.")
+c.metric("Accuracy", f"{M['accuracy']*100:.1f}%",
+         f"{(M['accuracy'] - M['never_pit_accuracy'])*100:+.1f}% vs never-pit baseline",
+         delta_color="off")
+
+st.caption(
+    f"Accuracy looks high because {M['never_pit_accuracy']*100:.1f}% of laps are "
+    "not pit stops — a model that never predicts a pit scores that by doing nothing. "
+    "PR-AUC only measures the pit class and doesn't move when we retune the threshold, "
+    "so it's the number that tells us whether the model actually learned anything."
+)
+
+#with st.expander("Precision-Recall Curve"):
+    #st.image("pr_curve.png", use_container_width=True)
 
 st.title("Formula 1 Pit Stop Optimizer")
 
@@ -48,7 +76,9 @@ selected_driver = st.sidebar.selectbox("Driver", drivers)
 
 # Run Model
 X = race_df[MODEL_FEATURES]
-race_df["Predicted_Pit"] = model.predict(X)
+
+probs = model.predict_proba(X)[:, 1]
+race_df["Predicted_Pit"] = (probs >= PROBABILITY_THRESHOLD).astype(int)
 
 race_df["Actual_Status"] = race_df["endpoint_shouldpit"].map({
     0: "Stay Out",
