@@ -2,20 +2,46 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import joblib
 from pathlib import Path
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GroupKFold
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
 
-from Sample_test import process_jolpica_csv_dump
-
 BASE_DIR = Path(__file__).resolve().parent
+MASTER_CSV = BASE_DIR / "f1_lap_data_master.csv"
+TRAINING_CSV = BASE_DIR / "f1_lap_data.csv"
 
-# --- CONFIGURATION HYPERPARAMETERS ---
-PROBABILITY_THRESHOLD = 0.30  # Call 'PIT NEXT LAP' if probability exceeds 30%
-CLASS_WEIGHTS = {0: 1, 1: 18}   # Rebalanced weight (middle ground between 'balanced' and 1:8)
-N_ESTIMATORS = 100            # Number of decision trees in the Random Forest
-MAX_DEPTH = 8                 # Tree depth cap to prevent overfitting
+MODEL_FEATURES = [
+    "LapNumber",
+    "is_lap_1",
+    "endpoint_TyreLife",
+    "Position",
+    "endpoint_Stint",
+    "LapTime_Seconds",
+    "stint_comp",
+]
+
+# Load the training data accumulated from Sample_test.py
+def load_training_data():
+    print(" [LOCAL PROCESSING] Loading processed datasets...")
+
+    try:
+        train_df = pd.read_csv(TRAINING_CSV)
+        master_df = pd.read_csv(MASTER_CSV)
+
+    except FileNotFoundError as e:
+        print("\n [CRITICAL ERROR] Missing processed dataset.")
+        raise FileNotFoundError("Run sample_test.py first.") from e
+
+    print(" -> Training and master datasets loaded successfully.")
+
+    X = train_df[MODEL_FEATURES].to_numpy()
+    y = train_df["endpoint_shouldpit"].to_numpy()
+    groups = train_df["race_group"].to_numpy()
+
+    return (X, y, groups, MODEL_FEATURES, master_df)
+
 
 def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
     """
@@ -100,14 +126,10 @@ def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
     )
     final_clf.fit(X, y)
 
-    # Feature Importance Plot (Replaces tree diagram since RF uses multiple trees)
-    plt.figure(figsize=(8, 5))
-    importances = pd.Series(final_clf.feature_importances_, index=feature_cols).sort_values(ascending=True)
-    importances.plot(kind='barh', color='skyblue')
-    plt.title('Random Forest - Feature Importances')
-    plt.xlabel('Importance Score')
-    plt.tight_layout()
-    plt.savefig(BASE_DIR / 'feature_importances.png')
+    # Save Decision Tree Diagram
+    plt.figure(figsize=(18, 9))
+    plot_tree(final_clf, feature_names=feature_cols, class_names=['Stay Out', 'Pit'], filled=True, fontsize=9)
+    plt.savefig(BASE_DIR / 'decision_tree_diagram.png', dpi=300, bbox_inches='tight')
     plt.close()
 
     print(" -> Saved 'confusion_matrix_kfold.png' and 'feature_importances.png'.")
@@ -212,6 +234,6 @@ def demonstrate_race_predictions(clf, df, feature_cols, target_race_name="Abu Dh
 
 
 if __name__ == "__main__":
-    X, y, groups, feature_cols, full_df = process_jolpica_csv_dump()
+    X, y, groups, feature_cols, full_df = load_training_data()
     clf = run_step_1_kfold(X, y, groups, feature_cols, n_splits=5)
     demonstrate_race_predictions(clf, full_df, feature_cols, target_race_name="Abu Dhabi Grand Prix", target_year=2024)
