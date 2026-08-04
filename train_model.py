@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
 from pathlib import Path
-from sklearn.tree import DecisionTreeClassifier, plot_tree
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GroupKFold
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
 
@@ -45,10 +45,11 @@ def load_training_data():
 
 def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
     """
-    Executes Group K-Fold Cross-Validation across distinct Grand Prix events.
-    Trains a final production model on the full dataset once evaluation finishes.
+    Executes Group K-Fold Cross-Validation using a Random Forest Classifier
+    and Probability Thresholding. Trains a final model on the full dataset.
     """
-    print(f"\n [STEP 1] Running {n_splits}-Fold Group Cross-Validation (Grouped by Grand Prix)...")
+    print(f"\n [STEP 1] Running {n_splits}-Fold Group Cross-Validation with Random Forest...")
+    print(f" -> Config: Threshold={PROBABILITY_THRESHOLD*100:.0f}% | Class Weights={CLASS_WEIGHTS} | Max Depth={MAX_DEPTH}")
 
     gkf = GroupKFold(n_splits=n_splits)
     fold_accuracies, fold_precisions, fold_recalls, fold_f1s = [], [], [], []
@@ -59,14 +60,20 @@ def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
         X_tr, y_tr = X[train_idx], y[train_idx]
         X_va, y_va = X[val_idx], y[val_idx]
 
-        clf = DecisionTreeClassifier(
-            max_depth=5, 
-            min_samples_leaf=10, 
-            class_weight={0: 1, 1: 8}, # Rebalanced weight to control trigger sensitivity
-            random_state=42
+        # Upgrade to Random Forest Classifier
+        clf = RandomForestClassifier(
+            n_estimators=N_ESTIMATORS,
+            max_depth=MAX_DEPTH,
+            min_samples_leaf=10,
+            class_weight=CLASS_WEIGHTS,
+            random_state=42,
+            n_jobs=-1
         )
         clf.fit(X_tr, y_tr)
-        preds = clf.predict(X_va)
+
+        # Decision Probabilities instead of hard predict()
+        probs_va = clf.predict_proba(X_va)[:, 1]
+        preds = (probs_va >= PROBABILITY_THRESHOLD).astype(int)
 
         oof_predictions[val_idx] = preds
 
@@ -83,7 +90,7 @@ def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
         print(f" Fold {fold} | Acc: {acc*100:.2f}% | Pit Precision: {prec*100:.2f}% | Pit Recall: {rec*100:.2f}% | Pit F1: {f1:.2f}")
 
     print("\n" + "="*60)
-    print(" K-FOLD CROSS-VALIDATION SUMMARY RESULTS")
+    print(" K-FOLD CROSS-VALIDATION SUMMARY RESULTS (RANDOM FOREST)")
     print("="*60)
     print(f" Mean Overall Accuracy : {np.mean(fold_accuracies)*100:.2f}% (+/- {np.std(fold_accuracies)*100:.2f}%)")
     print(f" Mean Pit Precision    : {np.mean(fold_precisions)*100:.2f}%")
@@ -100,7 +107,7 @@ def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
                 xticklabels=['Stay Out', 'Pit Next Lap'], 
                 yticklabels=['Stay Out', 'Pit Next Lap'])
-    plt.title('Out-of-Fold Confusion Matrix (GroupKFold)')
+    plt.title('Out-of-Fold Confusion Matrix (Random Forest)')
     plt.xlabel('Predicted')
     plt.ylabel('Actual')
     plt.tight_layout()
@@ -108,17 +115,16 @@ def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
     plt.close()
 
     # Train final deployment model on 100% of the dataset
-    print("\n -> Training final production Decision Tree model on full dataset...")
-    final_clf = DecisionTreeClassifier(
-        max_depth=5, 
-        min_samples_leaf=10, 
-        class_weight={0: 1, 1: 8}, 
-        random_state=42
+    print("\n -> Training final production Random Forest model on full dataset...")
+    final_clf = RandomForestClassifier(
+        n_estimators=N_ESTIMATORS,
+        max_depth=MAX_DEPTH,
+        min_samples_leaf=10,
+        class_weight=CLASS_WEIGHTS,
+        random_state=42,
+        n_jobs=-1
     )
     final_clf.fit(X, y)
-
-    #Save model pkl file for streamlit
-    joblib.dump(final_clf, "final_model.pkl")
 
     # Save Decision Tree Diagram
     plt.figure(figsize=(18, 9))
@@ -126,16 +132,16 @@ def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
     plt.savefig(BASE_DIR / 'decision_tree_diagram.png', dpi=300, bbox_inches='tight')
     plt.close()
 
-    print(" -> Saved 'confusion_matrix_kfold.png' and 'decision_tree_diagram.png'.")
+    print(" -> Saved 'confusion_matrix_kfold.png' and 'feature_importances.png'.")
     return final_clf
 
 
 def demonstrate_race_predictions(clf, df, feature_cols, target_race_name="Abu Dhabi Grand Prix", target_year=2024):
     """
-    Evaluates model performance on a single target race and interactively queries driver telemetry.
+    Evaluates model performance on a target race using custom probability thresholding.
     """
     print("\n" + "="*70)
-    print(f"     RACE DEMONSTRATION: {target_year} {target_race_name}      ")
+    print(f"      RACE DEMONSTRATION: {target_year} {target_race_name}      ")
     print("="*70)
 
     race_mask = (df['raceName'] == target_race_name) & (df['year'] == target_year)
@@ -149,7 +155,10 @@ def demonstrate_race_predictions(clf, df, feature_cols, target_race_name="Abu Dh
         print(f" [INFO] Target race not found. Falling back to: {target_year} {target_race_name}")
 
     X_race = race_df[feature_cols].to_numpy()
-    race_df['Predicted_Pit'] = clf.predict(X_race)
+    
+    # Generate predicted probabilities and apply custom threshold
+    probs_race = clf.predict_proba(X_race)[:, 1]
+    race_df['Predicted_Pit'] = (probs_race >= PROBABILITY_THRESHOLD).astype(int)
 
     race_df['Actual_Status'] = race_df['endpoint_shouldpit'].map({1: 'PIT NEXT LAP', 0: 'Stay Out'})
     race_df['Predicted_Status'] = race_df['Predicted_Pit'].map({1: 'PIT NEXT LAP', 0: 'Stay Out'})
@@ -166,7 +175,7 @@ def demonstrate_race_predictions(clf, df, feature_cols, target_race_name="Abu Dh
     race_df['Evaluation'] = race_df.apply(get_match_label, axis=1)
 
     display_cols = [
-        'driverCode', 'LapNumber', 'is_lap_1', 'endpoint_Stint', 'endpoint_TyreLife', 
+        'driverCode', 'LapNumber', 'endpoint_Stint', 'endpoint_TyreLife', 
         'LapTime_Seconds', 'Actual_Status', 'Predicted_Status', 'Evaluation'
     ]
 
