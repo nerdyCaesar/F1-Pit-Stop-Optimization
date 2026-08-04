@@ -86,15 +86,12 @@ def process_jolpica_csv_dump(data_dir=None, output_csv=None):
     )
     df['endpoint_TyreLife'] = df.groupby(['year', 'roundNumber', 'driverCode', 'endpoint_Stint']).cumcount() + 1
 
-    # Feature Engineering: Add binary is_lap_1 feature
-    df['is_lap_1'] = (df['LapNumber'] == 1).astype(int)
-
     # Create a unique Group ID for each Grand Prix Event (Year + Round) for GroupKFold
     df['race_group'] = df['year'].astype(str) + "_R" + df['roundNumber'].astype(str)
 
     print(f"\nSuccessfully processed {len(df):,} total valid laps across 2022-2025.")
 
-    feature_cols = ['LapNumber', 'is_lap_1', 'endpoint_TyreLife', 'Position', 'endpoint_Stint', 'LapTime_Seconds']
+    feature_cols = ['LapNumber', 'endpoint_TyreLife', 'Position', 'endpoint_Stint', 'LapTime_Seconds']
 
     X = df[feature_cols].to_numpy()
     y = df['endpoint_shouldpit'].to_numpy()
