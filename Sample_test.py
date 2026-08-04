@@ -19,6 +19,7 @@ MODEL_FEATURES = [
 
 START_YEAR = 2022
 END_YEAR = 2025
+GLOBAL_STINT_LENGTH = 18 #Arbitrary Stint Length var
     
 def process_jolpica_csv_dump(data_dir=None, master_csv=None, training_csv=None):
     """
@@ -107,17 +108,31 @@ def process_jolpica_csv_dump(data_dir=None, master_csv=None, training_csv=None):
     # Store the max stint of each [raceName, year, driver] 
     df['max_stint'] = df.groupby(['year', 'raceName', 'driverCode'])['endpoint_Stint'].transform('max')
     
+    #Calculate length of each stint as a new datafram
+    stint_table = (df.groupby(['year', 'raceName', 'driverCode', 'endpoint_Stint']).aggregate(stint_length = ('LapNumber', 'size'), max_stint = ('max_stint', 'first')))
+
+    #reset the index of the table
+    stint_table = stint_table.reset_index()
+
     # Filter out the max stints cause they don't end in a pit
-    valid_stints_df = df[df['endpoint_Stint'] != df['max_stint']]
+    valid_stints_df = stint_table[stint_table['endpoint_Stint'] != stint_table['max_stint']]
     
-    # Calculate median per race exclusively
-    race_medians = valid_stints_df.groupby('raceName')['endpoint_Stint'].median()
+    # Calculate median per race and year
+    race_medians = valid_stints_df.groupby(['raceName', 'year'])['stint_length'].median().reset_index()
     
+    #create prior length column that calculates race medians only for prior years
+    race_medians = race_medians.sort_values(['raceName', 'year'])
+    race_medians['prior_length'] = race_medians.groupby('raceName')['stint_length'].transform(lambda s: s.shift().expanding().median())
+
+    #Fill in prior_length var for earliest year with arbitrary value
+    race_medians['prior_length'] = race_medians['prior_length'].fillna(GLOBAL_STINT_LENGTH)
+
     # Map back each race median to the orignal df and create current v. typical stint ratio
-    df['stint_comp'] = df['endpoint_TyreLife'] / df['raceName'].map(race_medians)
-    
-    # Drop helper column
-    df = df.drop(columns=['max_stint'])
+    df = df.merge(race_medians[['raceName', 'year', 'prior_length']], on=['raceName', 'year'], how='left')
+    df['stint_comp'] = df['endpoint_TyreLife'] / df['prior_length']
+
+    # Drop helper columns
+    df = df.drop(columns=['max_stint', 'prior_length'])
 
     # Feature Engineering: Add binary is_lap_1 feature
     df['is_lap_1'] = (df['LapNumber'] == 1).astype(int)
