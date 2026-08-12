@@ -142,7 +142,7 @@ display_cols = [
 
 st.dataframe(
     driver_df[display_cols],
-    use_container_width=stretch,
+    use_container_width=True,
     hide_index=True
 )
 
@@ -188,7 +188,7 @@ with st.expander("Decision Tree Visualization"):
     st.image(
         "decision_tree_diagram.png",
         caption="Decision Tree Classifier",
-        use_container_width=stretch
+        use_container_width=True
     )
     
 # Confusion Matrix
@@ -196,7 +196,7 @@ with st.expander("Confusion Matrix"):
     st.image(
         "confusion_matrix.png",
         caption="Confusion Matrix",
-        use_container_width=stretch
+        use_container_width=True
     )
 
 # Group K-Fold Confusion Matrix
@@ -204,5 +204,5 @@ with st.expander("Group K-Fold Confusion Matrix"):
     st.image(
         "confusion_matrix_kfold.png",
         caption="Group K-Fold Cross Validation Confusion Matrix",
-        use_container_width=stretch
+        use_container_width=True
     )
