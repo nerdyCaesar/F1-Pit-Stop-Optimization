@@ -43,6 +43,100 @@
             text-decoration: none;
         }
 
+        /* NAVBAR */
+
+        nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(11, 11, 15, 0.95);
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-container {
+            max-width: 1100px;
+            margin: auto;
+            padding: 18px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-weight: 800;
+            font-size: 20px;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 25px;
+            color: var(--gray);
+            font-size: 14px;
+        }
+
+        .nav-links a:hover {
+            color: white;
+        }
+
+        /* ABOUT */
+
+        .about {
+            max-width: 1100px;
+            margin: auto;
+            padding: 110px 24px 90px;
+        }
+
+        h1 {
+            font-size: clamp(48px, 8vw, 88px);
+            line-height: 0.95;
+            max-width: 850px;
+            letter-spacing: -4px;
+            margin-bottom: 28px;
+        }
+
+        .about p {
+            max-width: 700px;
+            color: var(--gray);
+            font-size: 19px;
+            margin-bottom: 35px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 13px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        .button-primary {
+            background: var(--red);
+            color: white;
+        }
+
+        .button-primary:hover {
+            background: #ff160f;
+            transform: translateY(-2px);
+        }
+
+        .button-secondary {
+            border: 1px solid var(--border);
+            color: white;
+        }
+
+        .button-secondary:hover {
+            border-color: #666;
+        }
+
         section {
             max-width: 1100px;
             margin: auto;
@@ -73,6 +167,50 @@
 </head>
 
 <body>
+        <nav>
+        <div class="nav-container">
+            <div class="logo">
+                F1 PIT STOP OPTIMIZER
+            </div>
 
+            <div class="nav-links">
+                <a href="#about">About</a>
+                <a href="#model">Model</a>
+                <a href="#results">Results</a>
+                <a href="#technology">Technology</a>
+                <a href="#collaborators">Collaborators</a>
+            </div>
+        </div>
+    </nav>
+
+
+    <!-- ABOUT -->
+
+    <header class="about">
+
+        <h1>
+            When should an F1 driver make a pit stop?
+        </h1>
+
+        <p>
+            The F1 Pit Stop Optimizer uses machine learning to predict
+            whether a Formula 1 driver should make a pit stop on the
+            next lap. The model is trained on Jolpica F1 race data and
+            considers factors such as lap data, tyre life, race position,
+            and stint information.  
+        </p>
+
+        <div class="buttons">
+            <a
+                class="button button-primary"
+                href="https://github.com/nerdyCaesar/F1-Pit-Stop-Optimization"
+                target="_blank"
+            >
+                View on GitHub →
+            </a>
+
+        </div>
+
+    </header>
 </body>
 </html>
