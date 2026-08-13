@@ -4,6 +4,72 @@ The F1 Pit Stop Optimizer is a Machine Learning project that predicts whether an
 The project also includes a Streamlit demo where users can select a season, Grand Prix, and driver to see the model's predictions and compare them with that actually happened.
 
 
+# Project Overview
+Formula 1 is a sport where small decisions can completely change the outcome of a race. One of the most important decisions is knowing the exact right time to make a pit stop. Pitting too early can cause a loss of track position, while pitting too late can lead to tire degradation and slower performance.
+
+The project's research question is:
+Based on current race conditions, can a machine learning model accurately predict when an F1 driver should pit?
+
+The model used in this project takes inputs such as:
+- Lap number
+- Tyre life
+- Race Position
+- Stint number
+- Lap time
+- Current stint length compared to typical stints
+
+The model produces a probability of a pit stop.
+
+For example:
+Pit Stop Probability: 62%
+Threshold: 35%
+Prediction: PIT NEXT LAP
+
+
+# GitHub Structure
+```
+F1-Pit-Stop-Optimizer/
+│
+├── jolpica-f1-csv/
+│   ├── formula_one_season.csv
+│   ├── formula_one_round.csv
+│   ├── formula_one_driver.csv
+│   ├── formula_one_lap.csv
+│   ├── formula_one_sessionentry.csv
+│   ├── formula_one_session.csv
+│   ├── formula_one_roundentry.csv
+│   ├── formula_one_teamdriver.csv
+│   └── formula_one_pitstop.csv
+│
+├── app/
+│   └── app.py
+│
+├── data/
+│   ├── f1_lap_data.csv
+│   └── f1_lap_data_master.csv
+│
+├── models/
+│   └── final_model.pkl
+│
+├── outputs/
+│   ├── confusion_matrix.png
+│   ├── confusion_matrix_kfold.png
+│   ├── desicion_tree_diagram.png
+│   ├── feature_importance.png
+│   ├── feature_importances.png
+│   └── model_metrics.json
+│
+├── src/
+│   ├── Sample_test.py
+│   └── train_model.py
+│
+├── .DS_Store
+├── .gitignore
+├── README.md
+└── requirements.txt
+```
+
+
 # File Directory
 
 The project has three main Python files.
@@ -43,6 +109,20 @@ First, install the dependencies. Run:
 
 `pip install numpy pandas matplotlib seaborn scikit-learn joblib streamlit`
 
+Next, download and place the Jolpica F1 CSV files inside:
+`jolpica-f1-csv/`
+
+The required files are:
+- formula_one_season.csv
+- formula_one_round.csv
+- formula_one_driver.csv
+- formula_one_lap.csv
+- formula_one_sessionentry.csv
+- formula_one_session.csv
+- formula_one_roundentry.csv
+- formula_one_teamdriver.csv
+- formula_one_pitstop.csv
+
 Then, process the raw data. Run:
 
 `python sample_test.py`
@@ -55,9 +135,7 @@ Then, train the model. Run:
 
 `python train_model.py`
 
-This performs the 5-fold Group Cross-Validation and trains the final model.
-
-It also creates:
+This performs the 5-fold Group Cross-Validation and trains the final model. It also creates:
 - final_model.pkl
 - model_metrics.json
 - confusion_matrix_kfold.png
@@ -66,3 +144,5 @@ It also creates:
 Finally, launch the Streamlit application. Run:
 
 `streamlit run app.py`
+
+The Streamlit dashboard should then open in your browser.
