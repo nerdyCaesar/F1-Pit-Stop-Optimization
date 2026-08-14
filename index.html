@@ -163,6 +163,46 @@
             max-width: 720px;
             margin-bottom: 40px;
         }
+
+        /* TECH STACK */
+
+        .tech-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .tech {
+            background: var(--dark-card);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 9px 14px;
+            font-size: 14px;
+            color: #ddd;
+        }
+
+        /* COLLABORATORS */
+
+        .collaborators {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+        }
+
+        .member {
+            background: var(--dark-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 28px;
+            transition: 0.2s;
+        }
+
+        .member-name {
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 6px;
+        }
     </style>
 </head>
 
@@ -212,5 +252,76 @@
         </div>
 
     </header>
+
+    <!-- TECHNOLOGY -->
+
+    <section id="technology">
+
+        <div class="section-label">05 / Technology</div>
+
+        <h2>Tech Stack</h2>
+
+        <div class="tech-list">
+
+            <div class="tech">Python</div>
+            <div class="tech">Pandas</div>
+            <div class="tech">NumPy</div>
+            <div class="tech">Scikit-learn</div>
+            <div class="tech">Random Forest</div>
+            <div class="tech">Matplotlib</div>
+            <div class="tech">Joblib</div>
+            <div class="tech">Streamlit</div>
+            <div class="tech">Jolpica F1 Data</div>
+
+        </div>
+
+    </section>
+
+
+    <!-- COLLABORATORS -->
+
+    <section id="collaborators">
+
+        <div class="section-label">06 / COLLABORATORS</div>
+
+        <h2>Team Members</h2>
+
+        <div class="collaborators">
+
+            <!-- COLLABORATOR 1 -->
+
+            <div class="member">
+
+                <div class="member-name">
+                    Odina Achike
+                </div>
+
+            </div>
+
+
+            <!-- COLLABORATOR 2 -->
+
+            <div class="member">
+
+                <div class="member-name">
+                    Piyush Belbase
+                </div>
+
+            </div>
+
+
+            <!-- COLLABORATOR 3 -->
+
+            <div class="member">
+
+                <div class="member-name">
+                    Muntaha Mim
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
 </body>
 </html>
