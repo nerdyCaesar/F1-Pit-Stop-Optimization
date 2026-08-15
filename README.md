@@ -65,6 +65,7 @@ F1-Pit-Stop-Optimizer/
 │
 ├── .DS_Store
 ├── .gitignore
+├── index.html
 ├── README.md
 └── requirements.txt
 ```

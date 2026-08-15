@@ -12,11 +12,7 @@
     >
 
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
             --red: #e10600;
@@ -27,9 +23,7 @@
             --border: #292933;
         }
 
-        html {
-            scroll-behavior: smooth;
-        }
+        html { scroll-behavior: smooth; }
 
         body {
             font-family: Arial, Helvetica, sans-serif;
@@ -38,12 +32,7 @@
             line-height: 1.6;
         }
 
-        a {
-            color: inherit;
-            text-decoration: none;
-        }
-
-        /* NAVBAR */
+        a { color: inherit; text-decoration: none; }
 
         nav {
             position: sticky;
@@ -61,26 +50,21 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
-        .logo {
-            font-weight: 800;
-            font-size: 20px;
-            letter-spacing: -0.5px;
-        }
+        .logo { font-weight: 800; font-size: 20px; letter-spacing: -0.5px; }
 
         .nav-links {
             display: flex;
             gap: 25px;
             color: var(--gray);
             font-size: 14px;
+            flex-wrap: wrap;
         }
 
-        .nav-links a:hover {
-            color: white;
-        }
-
-        /* ABOUT */
+        .nav-links a:hover { color: white; }
 
         .about {
             max-width: 1100px;
@@ -96,18 +80,9 @@
             margin-bottom: 28px;
         }
 
-        .about p {
-            max-width: 700px;
-            color: var(--gray);
-            font-size: 19px;
-            margin-bottom: 35px;
-        }
+        .about p { color: var(--gray); font-size: 19px; margin-bottom: 35px; }
 
-        .buttons {
-            display: flex;
-            gap: 14px;
-            flex-wrap: wrap;
-        }
+        .buttons { display: flex; gap: 14px; flex-wrap: wrap; }
 
         .button {
             display: inline-block;
@@ -118,30 +93,13 @@
             transition: 0.2s;
         }
 
-        .button-primary {
-            background: var(--red);
-            color: white;
-        }
+        .button-primary { background: var(--red); color: white; }
+        .button-primary:hover { background: #ff160f; transform: translateY(-2px); }
 
-        .button-primary:hover {
-            background: #ff160f;
-            transform: translateY(-2px);
-        }
+        .button-secondary { border: 1px solid var(--border); color: white; }
+        .button-secondary:hover { border-color: #666; }
 
-        .button-secondary {
-            border: 1px solid var(--border);
-            color: white;
-        }
-
-        .button-secondary:hover {
-            border-color: #666;
-        }
-
-        section {
-            max-width: 1100px;
-            margin: auto;
-            padding: 80px 24px;
-        }
+        section { max-width: 1100px; margin: auto; padding: 80px 24px; }
 
         .section-label {
             color: var(--red);
@@ -149,69 +107,61 @@
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 2px;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
 
-        h2 {
-            font-size: 40px;
-            letter-spacing: -1.5px;
-            margin-bottom: 20px;
-        }
+        h2 { font-size: 32px; letter-spacing: -1px; margin-bottom: 20px; }
+        h3 { font-size: 18px; }
 
-        .section-description {
-            color: var(--gray);
-            max-width: 720px;
-            margin-bottom: 40px;
-        }
+        .section-description { color: var(--gray); margin-bottom: 40px; }
 
-        /* TECH STACK */
+        .problem-stack { display: flex; flex-direction: column; gap: 20px; }
 
-        .tech-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .tech {
-            background: var(--dark-card);
-            border: 1px solid var(--border);
-            border-radius: 5px;
-            padding: 9px 14px;
-            font-size: 14px;
-            color: #ddd;
-        }
-
-        /* COLLABORATORS */
-
-        .collaborators {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 18px;
-        }
-
-        .member {
+        .card {
             background: var(--dark-card);
             border: 1px solid var(--border);
             border-radius: 10px;
             padding: 28px;
-            transition: 0.2s;
         }
 
-        .member-name {
-            font-size: 20px;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 6px;
+        .card h3 { margin-bottom: 12px; }
+        .card h4 { color: white; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        .card p { color: var(--gray); }
+
+        .algo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px; }
+        .algo-grid .card-full { grid-column: 1 / -1; }
+
+        .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 30px; }
+
+        .metric { background: var(--dark-card); border: 1px solid var(--border); border-radius: 10px; padding: 25px; }
+        .metric-value { font-size: 32px; font-weight: bold; color: white; margin-bottom: 5px; }
+        .metric-label { color: var(--gray); font-size: 13px; }
+
+        .viz-card { background: var(--dark-card); border: 1px solid var(--border); border-radius: 10px; padding: 30px; }
+        .viz-card img { width: 100%; height: auto; display: block; border-radius: 8px; background: white; }
+
+        .chart-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 30px; }
+        .chart-grid .viz-card { padding: 20px; }
+
+        .tech-list { display: flex; flex-wrap: wrap; gap: 10px; }
+        .tech { background: var(--dark-card); border: 1px solid var(--border); border-radius: 5px; padding: 9px 14px; font-size: 14px; color: #ddd; }
+
+        .collaborators { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+        .member { background: var(--dark-card); border: 1px solid var(--border); border-radius: 10px; padding: 28px; }
+        .member-name { font-size: 20px; font-weight: bold; text-align: center; }
+
+        @media (max-width: 700px) {
+            .algo-grid, .metrics, .chart-grid, .collaborators {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 
 <body>
-        <nav>
+    <nav>
         <div class="nav-container">
-            <div class="logo">
-                F1 PIT STOP OPTIMIZER
-            </div>
+            <div class="logo">F1 PIT STOP OPTIMIZER</div>
 
             <div class="nav-links">
                 <a href="#about">About</a>
@@ -223,46 +173,170 @@
         </div>
     </nav>
 
-
-    <!-- ABOUT -->
+    <!-- HOME -->
 
     <header class="about">
-
-        <h1>
-            When should an F1 driver make a pit stop?
-        </h1>
+        <h1>When should an F1 driver make a pit stop?</h1>
 
         <p>
-            The F1 Pit Stop Optimizer uses machine learning to predict
-            whether a Formula 1 driver should make a pit stop on the
-            next lap. The model is trained on Jolpica F1 race data and
-            considers factors such as lap data, tyre life, race position,
-            and stint information.  
+            The F1 Pit Stop Optimizer uses machine learning to predict whether a Formula 1 driver should make a pit stop on the next lap.
+            The model is trained on Jolpica F1 race data and considers factors such as lap data, tyre life, race position, and stint information.
         </p>
 
         <div class="buttons">
-            <a
-                class="button button-primary"
-                href="https://github.com/nerdyCaesar/F1-Pit-Stop-Optimization"
-                target="_blank"
-            >
-                View on GitHub →
-            </a>
+            <a class="button button-primary" href="https://github.com/nerdyCaesar/F1-Pit-Stop-Optimization" target="_blank">GitHub →</a>
+        </div>
+    </header>
 
+    <!-- ABOUT -->
+
+    <section id="about">
+        <div class="section-label">01 / The Problem</div>
+
+        <p class="section-description">
+            Formula 1 is a sport where small decisions can completely change the outcome of a race. One of the most important decisions is knowing
+            the exact right time to make a pit stop. Pitting too early can cause a loss of track position, while pitting too late can lead to tire
+            degradation and slower performance.
+        </p>
+
+        <div class="problem-stack">
+            <div class="card">
+                <h3>Research Question</h3>
+                <p>
+                    Can a machine learning model accurately predict when an F1 driver should pit based on lap time, tire life, position, and stint length?
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>Project Evolution</h3>
+                <p>
+                    The project started as a simple Decision Tree, which is one tree of yes or no questions. Since one tree tends to memorize
+                    the training data instead of learning general patterns, the team upgraded to a Random Forest, which combines the decisions of
+                    many trees for a stronger answer. Along the way, the team also built new features like <strong>stint_comp</strong>, a number
+                    that compares a driver's current stint length to the typical stint length for that specific track, and reworked how class
+                    imbalance was handled so the rare "pit" laps were not ignored.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- MODEL -->
+
+    <section id="model">
+        <div class="section-label">02 / The Model</div>
+
+        <p class="section-description">
+            The model uses race conditions and driver data to estimate whether a pit stop is likely to be appropriate on the next lap.
+        </p>
+
+        <div class="algo-grid">
+            <div class="card">
+                <h4>Machine Learning Model</h4>
+                <p>
+                    The team used a <strong>Random Forest Classifier</strong>, which sorts each lap into one of two groups instead of
+                    predicting a number. It uses <strong>supervised learning</strong>, which means the computer studies thousands of
+                    past laps that are already labeled with the correct answer (pit or stay out) and learns the pattern from those examples.
+                </p>
+            </div>
+
+            <div class="card">
+                <h4>Inputs & Outputs</h4>
+                <p>
+                    <strong>Inputs:</strong> lap number, tire life, race position, stint number, lap time, and stint_comp.<br><br>
+                    <strong>Output:</strong> a binary value of 0 or 1, 0 meaning driver should stay out and 1 meaning driver should pit the next lap.
+                </p>
+            </div>
+
+            <div class="card card-full">
+                <h4>Why a Random Forest instead of a decision tree?</h4>
+                <p>
+                    A single decision tree asks a series of yes or no questions, and each question splits the data into two groups.
+                    One tree can learn the training data too closely and perform worse on new races. A Random Forest builds 100 different
+                    trees, each trained on a slightly different group of the data, and then lets them vote. Averaging many desicions makes the final prediction more reliable.<br><br>
+                    <strong>Strengths:</strong> each tree's decisions can be visualized, and the forest combines many race factors at once.<br><br>
+                    <strong>Limits:</strong> the model can still overfit if it is not carefully controlled, and a missing or unusual
+                    data point does not automatically change how confident the model is.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- RESULTS -->
+
+    <section id="results">
+        <div class="section-label">03 / Results</div>
+
+        <p class="section-description">
+            The model was evaluated using Group KFold cross-validation, which splits the data by race so the model is never tested on
+            a race it already used during training. Because pit stops are rare, PR-AUC (Precision-Recall Area Under the Curve) was used,
+            since it focuses only on how well the model finds the pit-stop laps.
+        </p>
+
+        <div class="metrics">
+            <div class="metric">
+                <div class="metric-value">86.5%</div>
+                <div class="metric-label">Accuracy</div>
+            </div>
+
+            <div class="metric">
+                <div class="metric-value">0.072</div>
+                <div class="metric-label">PR-AUC</div>
+            </div>
+
+            <div class="metric">
+                <div class="metric-value">31.6%</div>
+                <div class="metric-label">Recall</div>
+            </div>
+
+            <div class="metric">
+                <div class="metric-value">8.7%</div>
+                <div class="metric-label">Precision</div>
+            </div>
         </div>
 
-    </header>
+        <div class="card" style="margin-top: 20px;">
+            <h3>What these numbers actually mean?</h3>
+            <p>
+                <strong>Accuracy (86.5%)</strong> looks strong, but the model guessing "Stay Out" for every lap would score 96.8%. So measuring accuracy will not help the model improve.<br><br>
+                
+                <strong>PR-AUC (0.072)</strong> compares the model to random guessing on this specific dataset, where random guessing would score about 0.032.
+                That means the model is <strong>2.24 times better than chance</strong> at spotting pit-stop laps, which is real progress, but still a modest overall score.<br><br>
+
+                <strong>Recall (31.6%)</strong> means the model correctly catches about 3 out of every 10 real pit stops.
+                <strong>Precision (8.7%)</strong> means that when the model predicts "pit," it is only right about 9% of the time, so it currently raises a lot of false alarms.<br><br>
+
+                The model has picked up on a real pattern and clearly beats random guessing, however, it is not accurate enough yet to replace a
+                human strategist making the call.
+            </p>
+        </div>
+
+        <h3 style="margin-top: 50px; margin-bottom: 20px;">Data Visualizations</h3>
+
+        <div class="chart-grid">
+            <div class="viz-card">
+                <img src="outputs/confusion_matrix.png" alt="Confusion matrix for the first F1 Pit Strategy model">
+            </div>
+
+            <div class="viz-card">
+                <img src="outputs/confusion_matrix_kfold.png" alt="Out-of-fold confusion matrix using GroupKFold cross-validation">
+            </div>
+
+            <div class="viz-card">
+                <img src="outputs/feature_importance.png" alt="Bar chart of Random Forest feature importance, ranking stint_comp as the most important feature">
+            </div>
+
+            <div class="viz-card">
+                <img src="outputs/decision_tree_diagram.png" alt="Diagram of a single decision tree from the model, showing splits on features like endpoint_Stint, LapNumber, and stint_comp">
+            </div>
+        </div>
+    </section>
 
     <!-- TECHNOLOGY -->
 
     <section id="technology">
-
-        <div class="section-label">05 / Technology</div>
-
-        <h2>Tech Stack</h2>
+        <div class="section-label">04 / Technology</div>
 
         <div class="tech-list">
-
             <div class="tech">Python</div>
             <div class="tech">Pandas</div>
             <div class="tech">NumPy</div>
@@ -272,56 +346,27 @@
             <div class="tech">Joblib</div>
             <div class="tech">Streamlit</div>
             <div class="tech">Jolpica F1 Data</div>
-
         </div>
-
     </section>
-
 
     <!-- COLLABORATORS -->
 
     <section id="collaborators">
-
-        <div class="section-label">06 / COLLABORATORS</div>
-
-        <h2>Team Members</h2>
+        <div class="section-label">05 / Collaborators</div>
 
         <div class="collaborators">
-
-            <!-- COLLABORATOR 1 -->
-
             <div class="member">
-
-                <div class="member-name">
-                    Odina Achike
-                </div>
-
+                <div class="member-name">Odina Achike</div>
             </div>
 
-
-            <!-- COLLABORATOR 2 -->
-
             <div class="member">
-
-                <div class="member-name">
-                    Piyush Belbase
-                </div>
-
+                <div class="member-name">Piyush Belbase</div>
             </div>
 
-
-            <!-- COLLABORATOR 3 -->
-
             <div class="member">
-
-                <div class="member-name">
-                    Muntaha Mim
-                </div>
-
+                <div class="member-name">Muntaha Mim</div>
             </div>
-
         </div>
-
     </section>
 </body>
 </html>
