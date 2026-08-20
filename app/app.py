@@ -5,9 +5,9 @@ import json
 from pathlib import Path
 
 # Set directories and csv locations
-BASE_DIR = Path(__file__).resolve().parent
-MASTER_CSV = BASE_DIR / "f1_lap_data_master.csv"
-MODEL_PATH = BASE_DIR / "final_model.pkl"
+BASE_DIR = Path(__file__).resolve().parent.parent
+MASTER_CSV = BASE_DIR / "data" / "f1_lap_data_master.csv"
+MODEL_PATH = BASE_DIR / "models" / "final_model.pkl"
 
 MODEL_FEATURES = [
     "LapNumber",
