@@ -242,7 +242,7 @@ def demonstrate_race_predictions(clf, df, feature_cols, target_race_name="Abu Dh
     print(f" - Pit Stops Caught: {caught_pits} / {actual_pits} actual pit stops")
     print("-" * 70)
 
-    output_filename = BASE_DIR / f"race_demo_{target_year}_{target_race_name.replace(' ', '_')}.csv"
+    output_filename = BASE_DIR / "outputs" / f"race_demo_{target_year}_{target_race_name.replace(' ', '_')}.csv"
     race_df[display_cols].to_csv(output_filename, index=False)
     print(f" -> Exported full race breakdown to '{output_filename}'\n")
 
