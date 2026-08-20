@@ -4,10 +4,16 @@ import pandas as pd
 import json
 from pathlib import Path
 
-# Set directories and csv locations
+# Project Root and Subdirectory Setup (from app/ to root)
 BASE_DIR = Path(__file__).resolve().parent.parent
-MASTER_CSV = BASE_DIR / "data" / "f1_lap_data_master.csv"
-MODEL_PATH = BASE_DIR / "models" / "final_model.pkl"
+
+DATA_DIR = BASE_DIR / "data"
+MODELS_DIR = BASE_DIR / "models"
+OUTPUTS_DIR = BASE_DIR / "outputs"
+
+MASTER_CSV = DATA_DIR / "f1_lap_data_master.csv"
+MODEL_PATH = MODELS_DIR / "final_model.pkl"
+METRICS_PATH = OUTPUTS_DIR / "model_metrics.json"
 
 MODEL_FEATURES = [
     "LapNumber",
@@ -21,10 +27,6 @@ MODEL_FEATURES = [
 
 PROBABILITY_THRESHOLD = 0.35
 
-# Load data and model
-model = joblib.load(MODEL_PATH)
-df = pd.read_csv(MASTER_CSV)
-
 # Set up Streamlit page
 st.set_page_config(
     page_title="F1 Pit Stop Optimizer",
@@ -32,7 +34,12 @@ st.set_page_config(
     layout="wide"
 )
 
-with open(BASE_DIR / "model_metrics.json") as f:
+# Load data and model
+model = joblib.load(MODEL_PATH)
+df = pd.read_csv(MASTER_CSV)
+
+# Load JSON Metrics
+with open(METRICS_PATH, "r") as f:
     M = json.load(f)
 
 st.divider()
@@ -53,9 +60,6 @@ st.caption(
     "PR-AUC only measures the pit class and doesn't move when we retune the threshold, "
     "so it's the number that tells us whether the model actually learned anything."
 )
-
-#with st.expander("Precision-Recall Curve"):
-    #st.image("pr_curve.png", use_container_width=True)
 
 st.title("Formula 1 Pit Stop Optimizer")
 
@@ -183,26 +187,32 @@ col6.metric("Pit Stops Correctly Identified", race_caught_pits)
 st.divider()
 st.header("Model Performance & Visualization")
 
-# Decision Tree
-with st.expander("Decision Tree Visualization"):
-    st.image(
-        "decision_tree_diagram.png",
-        caption="Decision Tree Classifier",
-        use_container_width=True
-    )
-    
-# Confusion Matrix
-with st.expander("Confusion Matrix"):
-    st.image(
-        "confusion_matrix.png",
-        caption="Confusion Matrix",
-        use_container_width=True
-    )
+# Feature Importance
+feat_img = OUTPUTS_DIR / "feature_importance.png"
+if feat_img.is_file():
+    with st.expander("Feature Importance"):
+        st.image(
+            str(feat_img),
+            caption="Random Forest Feature Importance",
+            use_container_width=True
+        )
 
 # Group K-Fold Confusion Matrix
-with st.expander("Group K-Fold Confusion Matrix"):
-    st.image(
-        "confusion_matrix_kfold.png",
-        caption="Group K-Fold Cross Validation Confusion Matrix",
-        use_container_width=True
-    )
+cm_kfold_img = OUTPUTS_DIR / "confusion_matrix_kfold.png"
+if cm_kfold_img.is_file():
+    with st.expander("Group K-Fold Confusion Matrix"):
+        st.image(
+            str(cm_kfold_img),
+            caption="Group K-Fold Cross Validation Confusion Matrix",
+            use_container_width=True
+        )
+
+# Standard Confusion Matrix (if generated)
+cm_img = OUTPUTS_DIR / "confusion_matrix.png"
+if cm_img.is_file():
+    with st.expander("Confusion Matrix"):
+        st.image(
+            str(cm_img),
+            caption="Confusion Matrix",
+            use_container_width=True
+        )
