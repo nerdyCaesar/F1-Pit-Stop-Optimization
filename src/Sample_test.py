@@ -2,15 +2,10 @@ import pandas as pd
 from pathlib import Path
 
 # Set directories and csv locations
-ROOT_DIR = Path(__file__).resolve().parent.parent
-
-# Get the folder locations
-DATA_DIR = ROOT_DIR / "data" / "jolpica-f1-csv"
-MODELS_DIR = ROOT_DIR / "models"
-OUTPUTS_DIR = ROOT_DIR / "outputs"
-
-MASTER_CSV = ROOT_DIR / "data" / "f1_lap_data_master.csv"
-TRAINING_CSV = ROOT_DIR / "data" / "f1_lap_data.csv"
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "jolpica-f1-csv"
+MASTER_CSV = BASE_DIR / "data" / "f1_lap_data_master.csv"
+TRAINING_CSV = BASE_DIR / "data" / "f1_lap_data.csv"
 
 MODEL_FEATURES = [
     "LapNumber",

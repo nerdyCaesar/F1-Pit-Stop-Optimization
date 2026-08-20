@@ -12,9 +12,9 @@ from sklearn.metrics import average_precision_score
 from sklearn.metrics import precision_recall_curve
 
 # Directory and File Setup
-BASE_DIR = Path(__file__).resolve().parent
-MASTER_CSV = BASE_DIR / "f1_lap_data_master.csv"
-TRAINING_CSV = BASE_DIR / "f1_lap_data.csv"
+BASE_DIR = Path(__file__).resolve().parent.parent
+MASTER_CSV = BASE_DIR / "data" / "f1_lap_data_master.csv"
+TRAINING_CSV = BASE_DIR / "data" / "f1_lap_data.csv"
 
 # Model Features
 MODEL_FEATURES = [
@@ -140,7 +140,7 @@ def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
     plt.xlabel('Predicted')
     plt.ylabel('Actual')
     plt.tight_layout()
-    plt.savefig(BASE_DIR / 'confusion_matrix_kfold.png')
+    plt.savefig(BASE_DIR / 'outputs' / 'confusion_matrix_kfold.png')
     plt.close()
 
     # Train final production Random Forest model on full dataset
@@ -156,7 +156,7 @@ def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
     final_clf.fit(X, y)
 
     # Save model pkl file for Streamlit deployment
-    joblib.dump(final_clf, BASE_DIR / "final_model.pkl")
+    joblib.dump(final_clf, BASE_DIR / "models" / "final_model.pkl")
 
     metrics = {
         "model_type": type(final_clf).__name__,
@@ -169,7 +169,7 @@ def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
         "recall": float(np.mean(fold_recalls)),
         "f1": float(np.mean(fold_f1s)),
     }
-    with open(BASE_DIR / "model_metrics.json", "w") as f:
+    with open(BASE_DIR / "outputs" / "model_metrics.json", "w") as f:
         json.dump(metrics, f, indent=2)
 
     # Save Feature Importance Diagram (Replaces plot_tree for Random Forests)
@@ -182,7 +182,7 @@ def run_step_1_kfold(X, y, groups, feature_cols, n_splits=5):
     plt.yticks(range(len(indices)), [feature_cols[i] for i in indices])
     plt.xlabel('Relative Importance')
     plt.tight_layout()
-    plt.savefig(BASE_DIR / 'feature_importance.png', dpi=300)
+    plt.savefig(BASE_DIR / 'outputs' / 'feature_importance.png', dpi=300)
     plt.close()
 
     print(" -> Saved 'final_model.pkl', 'confusion_matrix_kfold.png', and 'feature_importance.png'.")
@@ -242,7 +242,7 @@ def demonstrate_race_predictions(clf, df, feature_cols, target_race_name="Abu Dh
     print(f" - Pit Stops Caught: {caught_pits} / {actual_pits} actual pit stops")
     print("-" * 70)
 
-    output_filename = BASE_DIR / f"race_demo_{target_year}_{target_race_name.replace(' ', '_')}.csv"
+    output_filename = BASE_DIR / "outputs" / f"race_demo_{target_year}_{target_race_name.replace(' ', '_')}.csv"
     race_df[display_cols].to_csv(output_filename, index=False)
     print(f" -> Exported full race breakdown to '{output_filename}'\n")
 
