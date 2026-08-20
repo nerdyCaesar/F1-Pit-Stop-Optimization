@@ -2,10 +2,15 @@ import pandas as pd
 from pathlib import Path
 
 # Set directories and csv locations
-BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "jolpica-f1-csv"
-MASTER_CSV = BASE_DIR / "f1_lap_data_master.csv"
-TRAINING_CSV = BASE_DIR / "f1_lap_data.csv"
+ROOT_DIR = Path(__file__).resolve().parent.parent
+
+# Get the folder locations
+DATA_DIR = ROOT_DIR / "data" / "jolpica-f1-csv"
+MODELS_DIR = ROOT_DIR / "models"
+OUTPUTS_DIR = ROOT_DIR / "outputs"
+
+MASTER_CSV = ROOT_DIR / "data" / "f1_lap_data_master.csv"
+TRAINING_CSV = ROOT_DIR / "data" / "f1_lap_data.csv"
 
 MODEL_FEATURES = [
     "LapNumber",
@@ -19,7 +24,7 @@ MODEL_FEATURES = [
 
 START_YEAR = 2022
 END_YEAR = 2025
-GLOBAL_STINT_LENGTH = 18 #Arbitrary Stint Length var
+GLOBAL_STINT_LENGTH = 18 # Arbitrary Stint Length var
     
 def process_jolpica_csv_dump(data_dir=None, master_csv=None, training_csv=None):
     """
